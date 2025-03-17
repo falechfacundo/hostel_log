@@ -52,6 +52,7 @@ export function PartnerSelector({ onDateChange }) {
     isLoading: isLoadingPartners,
     addPartner,
     deletePartner,
+    refetchPartners, // Add this to destructure refetchPartners
   } = useTravelers(selectedDate); // Pasamos la fecha del store
 
   // Log only when partner actually changes
@@ -145,12 +146,8 @@ export function PartnerSelector({ onDateChange }) {
       try {
         setIsCreatingPartner(true);
 
-        // Clear existing traveler data before creating a new partner
-        setGroups([]);
-        setIndividuals([]);
-        queryClient.setQueryData(travelerKeys.groups.lists(), []);
-        queryClient.setQueryData(travelerKeys.individuals.lists(), []);
-
+        // Don't clear existing partner data when creating a new one
+        // This prevents affecting the partners dropdown
         const { name, size, days, startDate } = partnerData;
         const startDateObj = startDate || new Date();
         const formattedStartDate = format(startDateObj, "yyyy-MM-dd");
@@ -160,7 +157,8 @@ export function PartnerSelector({ onDateChange }) {
         const endDateObj = addDays(startDateObj, daysCount);
         const formattedEndDate = format(endDateObj, "yyyy-MM-dd");
 
-        await addPartner({
+        // Create the new partner
+        const newPartner = await addPartner({
           name,
           size: parseInt(size) || 0,
           days: daysCount,
@@ -168,18 +166,17 @@ export function PartnerSelector({ onDateChange }) {
           end_date: formattedEndDate,
         });
 
-        // Force a refetch of travelers data for the new partner
-        setTimeout(() => {
-          // Ensure we're working with fresh data from the server
-          queryClient.invalidateQueries({ queryKey: travelerKeys.all });
+        // Invalidate the cache AND explicitly refetch partners for the current date
+        const dateKey = format(selectedDate, "yyyy-MM-dd");
+        queryClient.invalidateQueries({
+          queryKey: [...travelerKeys.all, { date: dateKey }],
+        });
 
-          // Dispatch partner-changed event to notify other components
-          window.dispatchEvent(
-            new CustomEvent("partner-changed", { bubbles: true })
-          );
-        }, 100);
+        // Explicitly refetch partners to ensure the new partner appears in the list
+        await refetchPartners(selectedDate);
 
         setCreateDialogOpen(false);
+
         return true;
       } catch (error) {
         toast.error(`Error al crear partner: ${error.message}`);
@@ -188,7 +185,14 @@ export function PartnerSelector({ onDateChange }) {
         setIsCreatingPartner(false);
       }
     },
-    [addPartner, setGroups, setIndividuals]
+    [
+      addPartner,
+      selectedDate,
+      refetchPartners,
+      setSelectedPartner,
+      setGroups,
+      setIndividuals,
+    ]
   );
 
   const handleDeletePartner = useCallback((partner) => {

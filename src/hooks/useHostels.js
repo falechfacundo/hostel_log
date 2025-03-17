@@ -122,7 +122,6 @@ export function useHostels() {
     mutationFn: createHostel,
     onSuccess: (newHostel) => {
       queryClient.invalidateQueries({ queryKey: hostelKeys.lists() });
-      toast.success("Albergue creado exitosamente");
     },
     onError: (err) => {
       toast.error(`Error al crear albergue: ${err.message}`);
@@ -137,7 +136,6 @@ export function useHostels() {
         queryKey: hostelKeys.detail(updatedHostel.id),
       });
       queryClient.invalidateQueries({ queryKey: hostelKeys.lists() });
-      toast.success("Albergue actualizado exitosamente");
     },
     onError: (err) => {
       toast.error(`Error al actualizar albergue: ${err.message}`);
@@ -150,7 +148,6 @@ export function useHostels() {
     onSuccess: ({ id }) => {
       queryClient.invalidateQueries({ queryKey: hostelKeys.lists() });
       queryClient.removeQueries({ queryKey: hostelKeys.detail(id) });
-      toast.success("Albergue eliminado");
     },
     onError: (err) => {
       toast.error(`Error al eliminar albergue: ${err.message}`);

@@ -404,29 +404,34 @@ export function useTravelers(initialDate = new Date()) {
   // Mutations para partners
   const createPartnerMutation = useMutation({
     mutationFn: createPartner,
-    onSuccess: (newPartner) => {
-      // Update both the cache and our store with the new partner
-      const updatedPartners = [...(storePartners || []), newPartner];
-      setPartners(updatedPartners);
+    onSuccess: async (newPartner) => {
+      // Instead of manually adding to the array, we'll:
+      // 1. Prepare the new partner just for initial selection
+      const preparedPartner = {
+        ...newPartner,
+        groups: [],
+        individuals: [],
+        hostelAssignments: [],
+      };
 
-      // Initialize empty travelers lists for the new partner
-      newPartner.groups = [];
-      newPartner.individuals = [];
-
-      // Explicitly clear traveler data in the store and cache
-      setGroups([]);
-      setIndividuals([]);
-      queryClient.setQueryData(travelerKeys.groups.lists(), []);
-      queryClient.setQueryData(travelerKeys.individuals.lists(), []);
-
-      // Invalidate any existing traveler data queries
-      queryClient.invalidateQueries({ queryKey: travelerKeys.groups.lists() });
-      queryClient.invalidateQueries({
-        queryKey: travelerKeys.individuals.lists(),
+      // 2. Invalidate the queries to force a fresh fetch
+      const dateStr = format(initialDate, "yyyy-MM-dd");
+      await queryClient.invalidateQueries({
+        queryKey: partnerKeys.byDate(dateStr),
+        refetchActive: true, // Force an immediate refetch
       });
 
-      // Select the new partner (this will trigger partner-changed event)
-      selectPartner(newPartner);
+      // 3. Temporarily select the new partner for UI responsiveness
+      // but don't manually update the partners array
+      selectPartner(preparedPartner);
+      setGroups([]);
+      setIndividuals([]);
+
+      // 4. Explicitly refetch to ensure we have fresh data
+      await refetchPartnersQuery();
+
+      // Note: We're NOT manually updating the partners array anymore
+      // Instead letting the query refetch handle that
     },
     onError: (err) => {
       toast.error(`Error al crear partner: ${err.message}`);
