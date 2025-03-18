@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Nuevo modelo Partner
+model Partner {
+  id        String      @id @default(uuid())
+  name      String
+  size      Int
+  days      Int         @default(5)
+  
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relaciones con grupos e individuos
+  groups    Group[]
+  individuals Person[]  @relation("PartnerIndividuals")
+
+  // Relación con asignaciones de albergues
+  hostelAssignments HostelPartnerAssignment[]
+
+  @@map("partners")
+}
+
+// Nueva entidad para gestionar asignaciones de albergues a partners
+model HostelPartnerAssignment {
+  id        String    @id @default(uuid())
+  
+  partner   Partner   @relation(fields: [partnerId], references: [id])
+  partnerId String
+  
+  hostel    Hostel    @relation(fields: [hostelId], references: [id])
+  hostelId  String
+  
+  date      DateTime  @db.Date
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Un albergue no puede estar asignado a dos partners en la misma fecha
+  @@unique([hostelId, date])
+  @@map("hostel_partner_assignments")
+}
+
+model Hostel {
+  id            String        @id @default(uuid())
+
+  name          String
+  address       String
+  capacity      Int
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  rooms         Room[]
+  
+  // Relación con asignaciones de partners
+  partnerAssignments HostelPartnerAssignment[]
+
+  @@map("hostels")
+}
+
+model Room {
+  id        String       @id @default(uuid())
+
+  hostel    Hostel       @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  hostelId  String       // Renombrado de hostel_id para mantener consistencia
+
+  name      String
+  capacity  Int
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  assignments Assignment[]
+
+  @@map("rooms")
+}
+
+model Group {
+  id          String       @id @default(uuid())
+
+  name        String
+  size        Int
+  
+  // Relación con partner
+  partner     Partner?     @relation(fields: [partnerId], references: [id])
+  partnerId   String?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  person      Person[]
+  assignments Assignment[]
+
+  @@map("groups")
+}
+
+model Person {
+  id        String   @id @default(uuid())
+
+  group     Group?   @relation(fields: [groupId], references: [id])
+  groupId   String?
+
+  // Relación con partner para individuos
+  partner   Partner? @relation("PartnerIndividuals", fields: [partnerId], references: [id])
+  partnerId String?
+
+  name      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments Assignment[] 
+
+  @@map("person")
+}
+
+model Assignment {
+  id        String   @id @default(uuid())
+
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId   String?
+  person    Person?  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  personId  String?
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId    String
+
+  date      DateTime @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Restricciones únicas para evitar duplicados
+  @@unique([roomId, date, groupId])
+  @@unique([roomId, date, personId])
+
+  @@map("assignments")
+}
