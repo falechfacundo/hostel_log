@@ -43,14 +43,14 @@ export function DatePicker({ date, onChange, isLoading, className }) {
       <div className="flex items-center">
         <div className="relative border focus-within:ring-1 focus-within:ring-primary shadow-sm border-none">
           {/* Mostramos la fecha en formato español */}
-          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
+          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 bg-white px-2 py-1">
             {spanishFormattedDate}
           </div>
           <input
             type="date"
             value={inputValue}
             onChange={handleInputChange}
-            className="px-4 py-2 bg-background focus:outline-none w-[180px] text-transparent"
+            className="px-4 py-2 bg-background focus:outline-none w-[180px] text-transparent select-none"
           />
         </div>
       </div>

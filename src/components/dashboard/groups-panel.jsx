@@ -39,6 +39,9 @@ export function GroupsPanel({ groups, assignedStatus = {} }) {
     return assignedStatus[group.id] || false;
   };
 
+  // Filter out assigned groups
+  const availableGroups = groups.filter((group) => !isGroupAssigned(group));
+
   return (
     <Card>
       <CardHeader>
@@ -46,58 +49,42 @@ export function GroupsPanel({ groups, assignedStatus = {} }) {
           <Users className="h-5 w-5" />
           Grupos Disponibles
           <span className="ml-auto text-xs text-muted-foreground">
-            {groups.filter((g) => !isGroupAssigned(g)).length} disponibles
+            {availableGroups.length} disponibles
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {groups.length === 0 ? (
+        {availableGroups.length === 0 ? (
           <div className="text-center text-muted-foreground py-4">
             No hay grupos disponibles
           </div>
         ) : (
-          groups.map((group) => {
-            // Check if this group is assigned
-            const isAssigned = isGroupAssigned(group);
-
-            return (
-              <Draggable
-                key={`group-${group.id}`}
-                id={`group-${group.id}`}
-                disabled={isAssigned}
+          availableGroups.map((group) => (
+            <Draggable key={`group-${group.id}`} id={`group-${group.id}`}>
+              <div
+                className={cn(
+                  "p-3 rounded-lg border border-border transition-colors relative",
+                  "bg-card hover:bg-accent cursor-move"
+                )}
               >
-                <div
-                  className={cn(
-                    "p-3 rounded-lg border border-border transition-colors relative",
-                    isAssigned
-                      ? "bg-gray-100 opacity-70 cursor-not-allowed"
-                      : "bg-card hover:bg-accent cursor-move"
-                  )}
-                >
-                  {isAssigned && (
-                    <span className="text-xs bg-primary/10 text-primary rounded px-2 py-1 absolute top-2 right-2">
-                      Asignado
-                    </span>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <div className="space-y-2">
-                      <p>{group.people.length} personas</p>
-                      <ul>
-                        {group.people?.map((person) => (
-                          <li
-                            key={person.id}
-                            className="text-sm text-muted-foreground"
-                          >
-                            {person.name}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                <div className="flex justify-between items-center">
+                  <div className="space-y-2">
+                    <p>{group.people.length} personas</p>
+                    <ul>
+                      {group.people?.map((person) => (
+                        <li
+                          key={person.id}
+                          className="text-sm text-muted-foreground"
+                        >
+                          {person.name}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              </Draggable>
-            );
-          })
+              </div>
+            </Draggable>
+          ))
         )}
       </CardContent>
     </Card>

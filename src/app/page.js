@@ -491,11 +491,52 @@ export default function Dashboard() {
     }
   };
 
+  // Create a wrapper function around removeAssignment to update local state
+  const handleRemoveAssignment = async (assignmentId) => {
+    try {
+      // Find the assignment before removing it to know which entity to unmark
+      const assignmentToRemove = assignments.find((a) => a.id === assignmentId);
+
+      if (!assignmentToRemove) {
+        console.error("Assignment not found:", assignmentId);
+        return;
+      }
+
+      // Call the original removeAssignment function
+      await removeAssignment(assignmentId);
+
+      // Update local state to mark entity as unassigned
+      if (assignmentToRemove.type === "group" && assignmentToRemove.groupId) {
+        setManualAssignmentStatus((prev) => ({
+          ...prev,
+          groups: {
+            ...prev.groups,
+            [assignmentToRemove.groupId]: false, // Mark as unassigned
+          },
+        }));
+      } else if (
+        assignmentToRemove.type === "individual" &&
+        assignmentToRemove.individualId
+      ) {
+        setManualAssignmentStatus((prev) => ({
+          ...prev,
+          individuals: {
+            ...prev.individuals,
+            [assignmentToRemove.individualId]: false, // Mark as unassigned
+          },
+        }));
+      }
+    } catch (error) {
+      console.error("Error removing assignment:", error);
+      toast.error("Error al eliminar la asignación");
+    }
+  };
+
   // Add a new function for forced removal from full rooms
   const handleForceRemoval = async (assignmentId, roomId) => {
     try {
-      // Call the removeAssignment function directly
-      await removeAssignment(assignmentId);
+      // Use the new wrapper function instead of calling removeAssignment directly
+      await handleRemoveAssignment(assignmentId);
     } catch (error) {
       console.error("Error al eliminar asignación:", error);
     }
@@ -679,7 +720,7 @@ export default function Dashboard() {
                             hostel={hostel}
                             assignments={assignments}
                             roomAssignments={processRoomAssignments} // Pass the processed assignments
-                            removeAssignment={removeAssignment}
+                            removeAssignment={handleRemoveAssignment} // Pass the wrapper function instead
                             forceRemoval={handleForceRemoval} // Add the force removal handler
                             entities={{
                               groups, // Pasar los grupos completos
