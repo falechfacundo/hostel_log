@@ -1,6 +1,10 @@
 {
-  "/page": "app/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/albergues/new/page": "app/albergues/new/page.js",
   "/albergues/page": "app/albergues/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/viajeros/page": "app/viajeros/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js"
+  "/register/page": "app/register/page.js"
 }

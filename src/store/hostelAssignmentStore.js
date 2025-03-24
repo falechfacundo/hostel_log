@@ -229,23 +229,3 @@ export const useHostelAssignmentStore = create((set, get) => ({
   // Resetear errores
   resetError: () => set({ error: null }),
 }));
-
-// Añadir listener de visibilidad en una inicialización global
-const initialize = () => {
-  // Escuchar cambios de visibilidad para resetear estados de carga atascados
-  document.addEventListener("visibilitychange", () => {
-    // Si volvemos a la pestaña y hay alguna carga pendiente que lleva más de 5 segundos
-    if (!document.hidden) {
-      const state = useHostelAssignmentStore.getState();
-
-      // Si está cargando, reiniciamos el estado
-      if (state.isLoading) {
-        console.log("Tab became visible, resetting loading state");
-        useHostelAssignmentStore.setState({ isLoading: false });
-      }
-    }
-  });
-};
-
-// Ejecutar inicialización
-initialize();

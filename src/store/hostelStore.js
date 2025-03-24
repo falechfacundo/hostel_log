@@ -8,60 +8,7 @@ import {
   deleteHostel as deleteHostelAction,
 } from "@/actions/hostel-actions";
 
-// Utility to create a cancellable fetch with retry
-const createFetchWithRetry = () => {
-  let retryCount = 0;
-  const MAX_RETRIES = 3;
-
-  // Function to fetch with retry capability
-  const fetchWithRetry = async (actionFn, ...args) => {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        if (attempt > 0) {
-          console.log(`Retry attempt ${attempt} after tab switch`);
-        }
-
-        const result = await actionFn(...args);
-        return result;
-      } catch (error) {
-        console.error(`Attempt ${attempt} failed:`, error);
-
-        // If we've reached max retries, throw the error
-        if (attempt === MAX_RETRIES) {
-          throw error;
-        }
-
-        // Wait a bit before retrying (exponential backoff)
-        await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
-      }
-    }
-  };
-
-  return { fetchWithRetry };
-};
-
 export const useHostelStore = create((set, get) => {
-  // Create the fetch utility
-  const { fetchWithRetry } = createFetchWithRetry();
-
-  // Set up visibility change listener
-  if (typeof window !== "undefined") {
-    document.addEventListener("visibilitychange", () => {
-      // When the page becomes visible again
-      if (document.visibilityState === "visible") {
-        const state = get();
-        // If we're in a loading state, reset it
-        if (state.isLoading) {
-          console.log("Tab became visible, resetting loading state");
-          set({ isLoading: false });
-
-          // Optionally retry the hostels fetch
-          get().fetchHostels();
-        }
-      }
-    });
-  }
-
   return {
     // Estado
     hostels: [],
@@ -73,8 +20,8 @@ export const useHostelStore = create((set, get) => {
       try {
         set({ isLoading: true, error: null });
 
-        // Call server action with retry
-        const result = await fetchWithRetry(fetchHostelsAction);
+        // Call server action directly
+        const result = await fetchHostelsAction();
 
         // Handle errors from server action
         if (result.error) {

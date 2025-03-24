@@ -10,70 +10,7 @@ import {
   deletePartner as deletePartnerAction,
 } from "@/actions/partner-actions";
 
-// Utility to create a cancellable fetch with retry
-const createFetchWithRetry = () => {
-  let controller = new AbortController();
-  let retryCount = 0;
-  const MAX_RETRIES = 3;
-
-  // Function to abort any in-flight request
-  const abort = () => {
-    controller.abort();
-    controller = new AbortController();
-  };
-
-  // Function to fetch with retry capability
-  const fetchWithRetry = async (actionFn, ...args) => {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        if (attempt > 0) {
-          console.log(`Retry attempt ${attempt} after tab switch`);
-        }
-
-        const result = await actionFn(...args);
-        return result;
-      } catch (error) {
-        console.error(`Attempt ${attempt} failed:`, error);
-
-        // If we've reached max retries, throw the error
-        if (attempt === MAX_RETRIES) {
-          throw error;
-        }
-
-        // Wait a bit before retrying (exponential backoff)
-        await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
-      }
-    }
-  };
-
-  return { fetchWithRetry, abort };
-};
-
 export const useTravelerStore = create((set, get) => {
-  // Create the fetch utility
-  const { fetchWithRetry, abort: abortFetch } = createFetchWithRetry();
-
-  // Set up visibility change listener
-  if (typeof window !== "undefined") {
-    document.addEventListener("visibilitychange", () => {
-      // When the page becomes visible again
-      if (document.visibilityState === "visible") {
-        const state = get();
-        // If we're in a loading state, reset it and retry the last fetch
-        if (state.isLoading) {
-          console.log("Tab became visible, resetting loading state");
-          set({ isLoading: false });
-
-          // Optionally retry the last fetch if we have a lastRequestDate
-          if (state.lastRequestDate) {
-            console.log("Automatically retrying last fetch after tab switch");
-            get().fetchPartnersByDate(state.lastRequestDate);
-          }
-        }
-      }
-    });
-  }
-
   return {
     // Core state
     partners: [],
@@ -86,9 +23,6 @@ export const useTravelerStore = create((set, get) => {
     // Data fetching
     fetchPartnersByDate: async (date) => {
       try {
-        // Abort any ongoing fetch
-        abortFetch();
-
         set({
           isLoading: true,
           error: null,
@@ -99,8 +33,8 @@ export const useTravelerStore = create((set, get) => {
 
         console.log("ZUSTAND: Fetching partners by date via Server Action");
 
-        // Use the fetchWithRetry utility
-        const result = await fetchWithRetry(fetchPartnersByDateAction, dateStr);
+        // Use the server action directly
+        const result = await fetchPartnersByDateAction(dateStr);
 
         // Handle error responses from server action
         if (result.error) {
@@ -146,7 +80,6 @@ export const useTravelerStore = create((set, get) => {
 
     // Methods to cancel ongoing requests
     cancelRequests: () => {
-      abortFetch();
       set({ isLoading: false });
     },
 
