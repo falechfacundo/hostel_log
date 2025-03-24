@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Backpack } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -8,6 +8,11 @@ import { toast } from "sonner";
 export function BackpackToggle({ person, onUpdate, disabled = false }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [hasBackpack, setHasBackpack] = useState(person?.backpack || false);
+
+  // Keep local state in sync with props
+  useEffect(() => {
+    setHasBackpack(person?.backpack || false);
+  }, [person?.backpack]);
 
   // Toggle backpack status
   const toggleBackpack = async () => {

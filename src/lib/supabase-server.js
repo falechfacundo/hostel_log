@@ -27,8 +27,6 @@ export async function fetchPartnersByDateAction(dateStr) {
   try {
     const supabase = await createServerSupabaseClient();
 
-    // No need to verify authentication - server has direct access
-
     // Query partners by date
     const { data: partners, error } = await supabase
       .from("partners")

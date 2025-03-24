@@ -48,11 +48,15 @@ export const useTravelerStore = create((set, get) => {
           return [];
         }
 
+        // Ensure individuals are properly filtered (don't belong to any group)
+        const filteredIndividuals =
+          individuals?.filter((person) => person.group_id === null) || [];
+
         // Update state with data from server action
         set({
           partners,
           groups: groups || [],
-          individuals: individuals || [],
+          individuals: filteredIndividuals,
           isLoading: false,
         });
 
@@ -66,6 +70,15 @@ export const useTravelerStore = create((set, get) => {
           );
           if (currentPartner) {
             partnerStore.setSelectedPartner(currentPartner);
+
+            // If this is the currently selected partner, make sure to update individuals correctly
+            if (currentPartner.id === selectedPartner.id) {
+              // Fetch proper individuals for this partner
+              const partnerIndividuals = filteredIndividuals.filter(
+                (ind) => ind.partner_id === currentPartner.id
+              );
+              partnerStore.setIndividuals(partnerIndividuals);
+            }
           }
         }
 
@@ -293,7 +306,6 @@ export const useTravelerStore = create((set, get) => {
           partnerStore.setGroups([...get().groups]);
         }
 
-        toast.success("Grupo creado correctamente");
         return fullGroup;
       } catch (error) {
         console.error("Error in createGroup:", error);
@@ -346,7 +358,6 @@ export const useTravelerStore = create((set, get) => {
           partnerStore.setGroups(get().groups.filter((g) => g.id !== id));
         }
 
-        toast.success("Grupo eliminado correctamente");
         return groupToDelete;
       } catch (error) {
         console.error("Error in deleteGroup:", error);
@@ -404,7 +415,6 @@ export const useTravelerStore = create((set, get) => {
           partnerStore.setIndividuals([...get().individuals]);
         }
 
-        toast.success("Persona creada correctamente");
         return data;
       } catch (error) {
         console.error("Error in createIndividual:", error);
@@ -466,7 +476,6 @@ export const useTravelerStore = create((set, get) => {
           );
         }
 
-        toast.success("Persona eliminada correctamente");
         return { id };
       } catch (error) {
         console.error("Error in deleteIndividual:", error);
@@ -597,67 +606,120 @@ export const useTravelerStore = create((set, get) => {
         // Calcular nuevo tamaño
         const newSize = Math.max(0, (group.size || 1) - 1);
 
-        // Actualizar el tamaño del grupo
-        const { error: groupError } = await supabase
-          .from("groups")
-          .update({ size: newSize })
-          .eq("id", groupId);
+        // Si es el último miembro del grupo, eliminar el grupo completo
+        if (newSize === 0) {
+          // Eliminar el grupo
+          const { error: groupDeleteError } = await supabase
+            .from("groups")
+            .delete()
+            .eq("id", groupId);
 
-        if (groupError)
-          throw new Error(`Error updating group size: ${groupError.message}`);
-
-        // Actualizar estado
-        set((state) => {
-          // Actualizar el grupo eliminando la persona y ajustando el tamaño
-          const updatedGroups = state.groups.map((g) => {
-            if (g.id === groupId) {
-              return {
-                ...g,
-                size: newSize,
-                people: (g.people || []).filter((p) => p.id !== personId),
-              };
-            }
-            return g;
-          });
-
-          // También actualizar el partner correspondiente
-          const updatedPartners = state.partners.map((partner) => {
-            const groupInPartner = (partner.groups || []).find(
-              (g) => g.id === groupId
+          if (groupDeleteError)
+            throw new Error(
+              `Error deleting group: ${groupDeleteError.message}`
             );
-            if (groupInPartner) {
-              return {
-                ...partner,
-                groups: partner.groups.map((g) => {
-                  if (g.id === groupId) {
-                    return {
-                      ...g,
-                      size: newSize,
-                      people: (g.people || []).filter((p) => p.id !== personId),
-                    };
-                  }
-                  return g;
-                }),
-              };
-            }
-            return partner;
+
+          // Actualizar estado eliminando el grupo
+          set((state) => {
+            // Filtrar el grupo eliminado
+            const filteredGroups = state.groups.filter((g) => g.id !== groupId);
+
+            // También actualizar el partner correspondiente
+            const partnerId = group.partner_id;
+            const updatedPartners = state.partners.map((partner) => {
+              if (partner.id === partnerId) {
+                return {
+                  ...partner,
+                  groups: (partner.groups || []).filter(
+                    (g) => g.id !== groupId
+                  ),
+                };
+              }
+              return partner;
+            });
+
+            return {
+              groups: filteredGroups,
+              partners: updatedPartners,
+              isLoading: false,
+            };
           });
 
-          return {
-            groups: updatedGroups,
-            partners: updatedPartners,
-            isLoading: false,
-          };
-        });
+          // Actualizar PartnerStore para mantener sincronía
+          const partnerStore = usePartnerStore.getState();
+          const partnerId = group.partner_id;
+          if (partnerStore.selectedPartner?.id === partnerId) {
+            partnerStore.setGroups(
+              get().groups.filter((g) => g.id !== groupId)
+            );
+          }
 
-        // Actualizar PartnerStore para mantener sincronía
-        const partnerStore = usePartnerStore.getState();
-        const partnerId = group.partner_id;
-        if (partnerStore.selectedPartner?.id === partnerId) {
-          partnerStore.setGroups([...get().groups]);
+          return { groupId, deleted: true };
+        } else {
+          // Si aún quedan personas en el grupo, sólo actualizar el tamaño
+          const { error: groupError } = await supabase
+            .from("groups")
+            .update({ size: newSize })
+            .eq("id", groupId);
+
+          if (groupError)
+            throw new Error(`Error updating group size: ${groupError.message}`);
+
+          // Actualizar estado para el caso normal (no es el último miembro)
+          set((state) => {
+            // Actualizar el grupo eliminando la persona y ajustando el tamaño
+            const updatedGroups = state.groups.map((g) => {
+              if (g.id === groupId) {
+                return {
+                  ...g,
+                  size: newSize,
+                  people: (g.people || []).filter((p) => p.id !== personId),
+                };
+              }
+              return g;
+            });
+
+            // También actualizar el partner correspondiente
+            const updatedPartners = state.partners.map((partner) => {
+              const groupInPartner = (partner.groups || []).find(
+                (g) => g.id === groupId
+              );
+              if (groupInPartner) {
+                return {
+                  ...partner,
+                  groups: partner.groups.map((g) => {
+                    if (g.id === groupId) {
+                      return {
+                        ...g,
+                        size: newSize,
+                        people: (g.people || []).filter(
+                          (p) => p.id !== personId
+                        ),
+                      };
+                    }
+                    return g;
+                  }),
+                };
+              }
+              return partner;
+            });
+
+            return {
+              groups: updatedGroups,
+              partners: updatedPartners,
+              isLoading: false,
+            };
+          });
+
+          // Actualizar PartnerStore para mantener sincronía
+          const partnerStore = usePartnerStore.getState();
+          const partnerId = group.partner_id;
+          if (partnerStore.selectedPartner?.id === partnerId) {
+            partnerStore.setGroups([...get().groups]);
+          }
+
+          return { groupId, newGroupSize: newSize };
         }
-
-        return { groupId, newGroupSize: newSize };
       } catch (error) {
         console.error("Error in removePersonFromGroup:", error);
         set({ error: error.message, isLoading: false });
@@ -847,7 +909,6 @@ export const useTravelerStore = create((set, get) => {
         partnerStore.setGroups([]);
         partnerStore.setIndividuals([]);
 
-        toast.success(`Partner "${newPartner.name}" creado correctamente`);
         return newPartner;
       } catch (error) {
         console.error("Error creating partner:", error);
@@ -900,10 +961,6 @@ export const useTravelerStore = create((set, get) => {
             partnerStore.setIndividuals([]);
           }
         }
-
-        toast.success(
-          `Partner "${partnerToDelete.name}" eliminado correctamente`
-        );
         return { id };
       } catch (error) {
         console.error("Error deleting partner:", error);

@@ -11,21 +11,29 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Users, Loader2 } from "lucide-react";
+import { Upload, Users, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Replace useTravelers with useTravelerStore
 import { useTravelerStore } from "@/store/travelerStore";
 import { usePartnerStore } from "@/store/partnerStore";
 
 export function BulkGroupImport() {
-  const [text, setText] = useState("");
-  const [preview, setPreview] = useState([]);
+  // State for groups
+  const [groupText, setGroupText] = useState("");
+  const [groupPreview, setGroupPreview] = useState([]);
+
+  // State for individuals
+  const [individualText, setIndividualText] = useState("");
+  const [individualPreview, setIndividualPreview] = useState([]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Get the createGroup function directly from the store
+  // Get the necessary functions from the store
   const createGroup = useTravelerStore((state) => state.createGroup);
+  const createIndividual = useTravelerStore((state) => state.createIndividual);
   // Get the selected partner from the partner store
   const selectedPartner = usePartnerStore((state) => state.selectedPartner);
 
@@ -55,28 +63,42 @@ export function BulkGroupImport() {
     return groups;
   };
 
-  const handleTextChange = (e) => {
-    const newText = e.target.value;
-    setText(newText);
-    // Actualizar vista previa
-    setPreview(parseGroups(newText));
+  const parseIndividuals = (text) => {
+    // Split by lines, trim whitespace, and filter out empty lines
+    return text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
   };
 
-  const processGroups = async () => {
-    const parsedGroups = parseGroups(text);
+  const handleGroupTextChange = (e) => {
+    const newText = e.target.value;
+    setGroupText(newText);
+    // Actualizar vista previa de grupos
+    setGroupPreview(parseGroups(newText));
+  };
 
-    if (parsedGroups.length === 0) {
-      toast.error("No hay grupos para importar");
+  const handleIndividualTextChange = (e) => {
+    const newText = e.target.value;
+    setIndividualText(newText);
+    // Actualizar vista previa de individuales
+    setIndividualPreview(parseIndividuals(newText));
+  };
+
+  const processImport = async () => {
+    const parsedGroups = parseGroups(groupText);
+    const parsedIndividuals = parseIndividuals(individualText);
+
+    if (parsedGroups.length === 0 && parsedIndividuals.length === 0) {
+      toast.error("No hay datos para importar");
       return;
     }
 
     setIsImporting(true);
 
     try {
-      // Create groups one by one
-      let importedCount = 0;
-
-      // Process groups sequentially
+      // Import groups
+      let importedGroupCount = 0;
       for (const members of parsedGroups) {
         const groupData = {
           notes: `${members.length} personas`,
@@ -86,17 +108,42 @@ export function BulkGroupImport() {
           partnerId: selectedPartner.id,
         };
 
-        // Use the createGroup function directly from the store
         await createGroup(groupData);
-        importedCount++;
+        importedGroupCount++;
       }
 
-      setText("");
-      setPreview([]);
+      // Import individuals
+      let importedIndividualCount = 0;
+      for (const name of parsedIndividuals) {
+        const individualData = {
+          name: name.trim(),
+          partnerId: selectedPartner.id,
+        };
+
+        await createIndividual(individualData);
+        importedIndividualCount++;
+      }
+
+      // Reset state
+      setGroupText("");
+      setIndividualText("");
+      setGroupPreview([]);
+      setIndividualPreview([]);
       setIsOpen(false);
-      toast.success(`Importados ${importedCount} grupos con éxito`);
+
+      // Show success message with appropriate counts
+      let successMessage = "";
+      if (importedGroupCount > 0 && importedIndividualCount > 0) {
+        successMessage = `Importados ${importedGroupCount} grupos y ${importedIndividualCount} personas individuales con éxito`;
+      } else if (importedGroupCount > 0) {
+        successMessage = `Importados ${importedGroupCount} grupos con éxito`;
+      } else if (importedIndividualCount > 0) {
+        successMessage = `Importadas ${importedIndividualCount} personas individuales con éxito`;
+      }
+
+      toast.success(successMessage);
     } catch (error) {
-      toast.error(`Error al importar grupos: ${error.message}`);
+      toast.error(`Error al importar datos: ${error.message}`);
     } finally {
       setIsImporting(false);
     }
@@ -112,67 +159,146 @@ export function BulkGroupImport() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
-          <DialogTitle>Importar Grupos desde Texto</DialogTitle>
+          <DialogTitle>Importar Viajeros desde Texto</DialogTitle>
         </DialogHeader>
+
         <div className="grid grid-cols-2 gap-4">
           {/* Panel de entrada */}
-          <div className="space-y-4">
-            <div className="text-sm text-gray-600">
-              <p>Instrucciones:</p>
-              <ul className="list-disc pl-4 space-y-1">
-                <li>Una persona por línea</li>
-                <li>Línea en blanco para separar grupos</li>
-              </ul>
+          <div className="space-y-6">
+            {/* Sección de grupos */}
+            <div className="space-y-2">
+              <h3 className="font-medium">Grupos</h3>
+              <div className="text-sm text-gray-600">
+                <p>Instrucciones:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Una persona por línea</li>
+                  <li>Línea en blanco para separar grupos</li>
+                </ul>
+              </div>
+              <Textarea
+                placeholder="SONIA SERRAS&#10;ESTER FERNANDEZ&#10;JESUS RODRIGUEZ&#10;&#10;MARIA BOIX GUILABERT&#10;TANIA MATO SANCHEZ"
+                value={groupText}
+                onChange={handleGroupTextChange}
+                className="h-[180px] font-mono"
+              />
             </div>
-            <Textarea
-              placeholder="SONIA SERRAS&#10;ESTER FERNANDEZ&#10;JESUS RODRIGUEZ&#10;&#10;MARIA BOIX GUILABERT&#10;TANIA MATO SANCHEZ"
-              value={text}
-              onChange={handleTextChange}
-              className="h-[400px] font-mono"
-            />
+
+            {/* Sección de individuales */}
+            <div className="space-y-2">
+              <h3 className="font-medium">Personas Individuales</h3>
+              <div className="text-sm text-gray-600">
+                <p>Instrucciones:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Una persona por línea</li>
+                  <li>Sin agrupación</li>
+                </ul>
+              </div>
+              <Textarea
+                placeholder="CARLOS MARTIN&#10;LUCIA TORRES&#10;PEDRO SÁNCHEZ"
+                value={individualText}
+                onChange={handleIndividualTextChange}
+                className="h-[180px] font-mono"
+              />
+            </div>
           </div>
 
           {/* Panel de vista previa */}
           <div className="border-l pl-4">
             <h3 className="font-medium mb-4">Vista Previa:</h3>
-            <div className="space-y-4 max-h-[400px] overflow-y-auto">
-              {preview.map((group, groupIndex) => (
-                <div key={groupIndex} className="border rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="h-4 w-4" />
-                    <span className="font-medium">Grupo {groupIndex + 1}</span>
-                    <span className="text-sm text-gray-500">
-                      ({group.length} personas)
-                    </span>
+            <div className="space-y-5 max-h-[400px] overflow-y-auto">
+              {/* Vista previa de grupos */}
+              {groupPreview.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Grupos ({groupPreview.length})
+                  </h4>
+                  <div className="space-y-3">
+                    {groupPreview.map((group, groupIndex) => (
+                      <div key={groupIndex} className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="h-4 w-4" />
+                          <span className="font-medium">
+                            Grupo {groupIndex + 1}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            ({group.length} personas)
+                          </span>
+                        </div>
+                        <ul className="text-sm space-y-1">
+                          {group.map((person, personIndex) => (
+                            <li key={personIndex} className="text-gray-600">
+                              {person}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
-                  <ul className="text-sm space-y-1">
-                    {group.map((person, personIndex) => (
-                      <li key={personIndex} className="text-gray-600">
+                </div>
+              )}
+
+              {/* Vista previa de individuales */}
+              {individualPreview.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Personas Individuales ({individualPreview.length})
+                  </h4>
+                  <ul className="text-sm space-y-1 border rounded-lg p-3">
+                    {individualPreview.map((person, index) => (
+                      <li key={index} className="text-gray-600">
                         {person}
                       </li>
                     ))}
                   </ul>
                 </div>
-              ))}
+              )}
+
+              {/* Mensaje si no hay nada para importar */}
+              {groupPreview.length === 0 && individualPreview.length === 0 && (
+                <div className="text-center py-10 text-gray-500">
+                  <p>
+                    Agrega personas en los campos de texto para ver la vista
+                    previa
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={processGroups}
-            disabled={!preview.length || isImporting}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isImporting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : null}
-            Importar {preview.length}{" "}
-            {preview.length === 1 ? "Grupo" : "Grupos"}
-          </Button>
+        <div className="flex justify-between items-center gap-2 mt-4">
+          <div className="text-sm text-gray-500">
+            {groupPreview.length > 0 && (
+              <span>{groupPreview.length} grupos • </span>
+            )}
+            {individualPreview.length > 0 && (
+              <span>{individualPreview.length} individuales</span>
+            )}
+            {groupPreview.length === 0 && individualPreview.length === 0 && (
+              <span>No hay datos para importar</span>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={processImport}
+              disabled={
+                (groupPreview.length === 0 && individualPreview.length === 0) ||
+                isImporting
+              }
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isImporting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              Importar Todo
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 export function NewGroupForm({ onAddGroup, partnerId, partnerName }) {
   const [groupMembers, setGroupMembers] = useState([
     { name: "", backpack: false },
+    { name: "", backpack: false },
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -22,6 +23,10 @@ export function NewGroupForm({ onAddGroup, partnerId, partnerName }) {
   };
 
   const removeMember = (index) => {
+    // Prevent removing if it would result in less than 2 members
+    if (groupMembers.length <= 2) {
+      return;
+    }
     const newMembers = [...groupMembers];
     newMembers.splice(index, 1);
     setGroupMembers(newMembers);
@@ -51,12 +56,12 @@ export function NewGroupForm({ onAddGroup, partnerId, partnerName }) {
   const validateForm = () => {
     const errors = {};
 
-    // Validar que al menos un miembro tenga nombre
+    // Validar que al menos dos miembros tengan nombre
     const validMembers = groupMembers.filter(
       (member) => member.name.trim() !== ""
     );
-    if (validMembers.length === 0) {
-      errors.members = "Se requiere al menos un miembro en el grupo";
+    if (validMembers.length < 2) {
+      errors.members = "Se requieren al menos dos miembros en el grupo";
     }
 
     // Validar cada miembro individualmente
@@ -84,8 +89,8 @@ export function NewGroupForm({ onAddGroup, partnerId, partnerName }) {
       (member) => member.name.trim() !== ""
     );
 
-    if (validMembers.length === 0) {
-      toast.error("Se requiere al menos un miembro en el grupo");
+    if (validMembers.length < 2) {
+      toast.error("Se requieren al menos dos miembros en el grupo");
       return;
     }
 
@@ -98,7 +103,10 @@ export function NewGroupForm({ onAddGroup, partnerId, partnerName }) {
       });
 
       // Reset form state
-      setGroupMembers([{ name: "", backpack: false }]);
+      setGroupMembers([
+        { name: "", backpack: false },
+        { name: "", backpack: false },
+      ]);
       setValidationErrors({});
     } catch (error) {
       console.log("Error al crear grupo:", error);
@@ -164,7 +172,7 @@ export function NewGroupForm({ onAddGroup, partnerId, partnerName }) {
                     onClick={() => removeMember(index)}
                     variant="destructive"
                     size="icon"
-                    disabled={groupMembers.length <= 1}
+                    disabled={groupMembers.length <= 2}
                     className="h-9 w-9 flex-shrink-0"
                   >
                     <Trash2 className="h-4 w-4" />

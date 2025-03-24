@@ -53,7 +53,18 @@ export function GroupsList({
     ((groupId, personId) => {
       removePersonFromGroup({ groupId, personId });
     });
-  const effectiveUpdatePerson = onUpdatePerson || updatePerson;
+  const effectiveUpdatePerson =
+    onUpdatePerson ||
+    ((personData) => {
+      console.log("Updating person:", personData);
+      // Ensure we're passing the complete person data
+      return updatePerson({
+        id: personData.id,
+        backpack: personData.backpack,
+        // Include other fields if needed to prevent overwriting
+        ...(personData.name && { name: personData.name }),
+      });
+    });
 
   // Manejador de eliminación con confirmación
   const handleDeleteGroup = (groupId) => {
@@ -218,7 +229,11 @@ export function GroupsList({
                           {/* Componente toggle de mochila */}
                           <BackpackToggle
                             person={person}
-                            onUpdate={effectiveUpdatePerson}
+                            onUpdate={(updatedData) => {
+                              effectiveUpdatePerson(updatedData);
+                              // Force UI refresh if needed
+                              setDeletingMembers({ ...deletingMembers });
+                            }}
                             disabled={deletingMembers[person.id]}
                           />
 

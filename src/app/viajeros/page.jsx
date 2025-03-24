@@ -98,9 +98,7 @@ export default function Viajeros() {
 
   const handleDeleteGroup = useCallback(
     (groupId) => {
-      if (window.confirm("¿Estás seguro que deseas eliminar este grupo?")) {
-        deleteGroup(groupId);
-      }
+      deleteGroup(groupId);
     },
     [deleteGroup]
   );
@@ -133,9 +131,7 @@ export default function Viajeros() {
 
   const handleRemoveIndividual = useCallback(
     (id) => {
-      if (window.confirm("¿Estás seguro que deseas eliminar esta persona?")) {
-        deleteIndividual(id);
-      }
+      deleteIndividual(id);
     },
     [deleteIndividual]
   );

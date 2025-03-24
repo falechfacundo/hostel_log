@@ -88,15 +88,6 @@ export const useAuthStore = create(
               userProfile: profile,
               isAuthenticated: !!session?.user,
             });
-
-            // Show toast notifications for auth events
-            if (event === "SIGNED_IN") {
-              toast.success("Sesión iniciada correctamente");
-            } else if (event === "SIGNED_OUT") {
-              toast.info("Sesión cerrada");
-            } else if (event === "TOKEN_REFRESHED") {
-              console.log("Token refreshed successfully");
-            }
           });
 
           // Store subscription for cleanup

@@ -1,4 +1,5 @@
 import { useTravelerStore } from "@/store/travelerStore";
+import { usePartnerStore } from "@/store/partnerStore";
 
 import { BackpackToggle } from "@/components/ui/backpack-toggle";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +16,20 @@ export function IndividualsList({
 }) {
   // Get the updatePerson function directly from the store
   const updatePerson = useTravelerStore((state) => state.updatePerson);
+  const deleteIndividual = useTravelerStore((state) => state.deleteIndividual);
+
+  // Get individuals from the store if not provided via props (backwards compatibility)
+  const storeIndividuals = usePartnerStore((state) => state.individuals);
+  const effectiveIndividuals =
+    individuals.length > 0 ? individuals : storeIndividuals;
+
+  // Use store's delete function if not provided via props
+  const effectiveRemoveIndividual = onRemoveIndividual || deleteIndividual;
+
+  // Ensure we only display true individuals (no group members)
+  const filteredIndividuals = effectiveIndividuals.filter(
+    (person) => person.group_id === null
+  );
 
   // Función para formatear fechas en formato español
   const formatDateOrDefault = (dateString) => {
@@ -30,7 +45,7 @@ export function IndividualsList({
     return <div className="text-center py-4">Cargando personas...</div>;
   }
 
-  if (individuals.length === 0) {
+  if (filteredIndividuals.length === 0) {
     return (
       <div className="bg-muted/50 rounded-lg p-8 text-center">
         <User className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -48,7 +63,7 @@ export function IndividualsList({
     <div>
       <h2 className="text-2xl font-bold mb-4">Personas Individuales</h2>
       <div className="space-y-2">
-        {individuals.map((person) => (
+        {filteredIndividuals.map((person) => (
           <Card key={person.id}>
             <CardContent className="p-4">
               <div className="flex justify-between items-start">
@@ -80,7 +95,7 @@ export function IndividualsList({
                   <Button
                     variant="destructive"
                     size="icon"
-                    onClick={() => onRemoveIndividual(person.id)}
+                    onClick={() => effectiveRemoveIndividual(person.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
