@@ -225,6 +225,9 @@ export const useAssignmentStore = create((set, get) => ({
   // Limpiar todas las asignaciones
   clearAssignments: () => set({ assignments: {} }),
 
+  // Limpiar cache y forzar recarga
+  clearCache: () => set({ assignments: {} }),
+
   // Resetear errores
   resetError: () => set({ error: null }),
 }));

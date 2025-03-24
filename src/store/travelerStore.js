@@ -21,7 +21,7 @@ export const useTravelerStore = create((set, get) => {
     lastRequestDate: null, // Track the last date requested
 
     // Data fetching
-    fetchPartnersByDate: async (date) => {
+    fetchPartnersByDate: async (date, forceRefresh = false) => {
       try {
         set({
           isLoading: true,
@@ -32,6 +32,13 @@ export const useTravelerStore = create((set, get) => {
         const dateStr = format(new Date(date), "yyyy-MM-dd");
 
         console.log("ZUSTAND: Fetching partners by date via Server Action");
+
+        // Clear partner store if forced refresh is requested
+        if (forceRefresh) {
+          // Clean up partner store first
+          const partnerStore = usePartnerStore.getState();
+          partnerStore.clearStoreData();
+        }
 
         // Use the server action directly
         const result = await fetchPartnersByDateAction(dateStr);
@@ -999,6 +1006,9 @@ export function useTravelers(initialDate = new Date()) {
   const groups = usePartnerStore((state) => state.groups);
   const individuals = usePartnerStore((state) => state.individuals);
   const hostelAssignments = usePartnerStore((state) => state.hostelAssignments);
+  const clearPartnerStoreData = usePartnerStore(
+    (state) => state.clearStoreData
+  );
 
   // Obtenemos los datos y funciones del store
   const {
@@ -1019,8 +1029,8 @@ export function useTravelers(initialDate = new Date()) {
   } = useTravelerStore((state) => state);
 
   // Función para refrescar los partners
-  const refetchPartners = async (date = initialDate) => {
-    return await fetchPartnersByDate(date);
+  const refetchPartners = async (date = initialDate, forceRefresh = false) => {
+    return await fetchPartnersByDate(date, forceRefresh);
   };
 
   // Esta función mantiene la misma API que el hook original
@@ -1033,6 +1043,7 @@ export function useTravelers(initialDate = new Date()) {
     addPartner: createPartner,
     deletePartner,
     refetchPartners,
+    clearPartnerStoreData,
 
     // Travelers data
     individuals,

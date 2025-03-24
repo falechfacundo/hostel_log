@@ -228,4 +228,11 @@ export const useHostelAssignmentStore = create((set, get) => ({
 
   // Resetear errores
   resetError: () => set({ error: null }),
+
+  // Limpiar cache de asignaciones
+  clearCache: () =>
+    set({
+      partnerAssignments: {},
+      allAssignments: {},
+    }),
 }));

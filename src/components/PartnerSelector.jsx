@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCcw } from "lucide-react";
+import { toast } from "sonner";
 
 import { DatePicker } from "@/components/dashboard/date-picker";
 import { PartnerDropdown } from "@/components/partner/partner-dropdown";
@@ -12,9 +13,11 @@ import { DeletePartnerDialog } from "@/components/partner/delete-partner-dialog"
 
 // Import Zustand stores
 import { usePartnerStore } from "@/store/partnerStore";
-import { useTravelerStore } from "@/store/travelerStore";
+import { useTravelers, useTravelerStore } from "@/store/travelerStore";
 import { useDateStore } from "@/store/date-store";
 import { useAuthStore } from "@/store/authStore";
+import { useHostelAssignmentStore } from "@/store/hostelAssignmentStore";
+import { useAssignmentStore } from "@/store/assignmentStore";
 
 // Global variable to track last logged partner to prevent duplicate logs
 let lastLoggedPartnerId = null;
@@ -22,6 +25,7 @@ let lastLoggedPartnerId = null;
 export function PartnerSelector() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // States that still need to be managed at this level
   const [isCreatingPartner, setIsCreatingPartner] = useState(false);
@@ -34,12 +38,40 @@ export function PartnerSelector() {
 
   // Store access for our main component logic
   const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+  const clearPartnerStoreData = usePartnerStore(
+    (state) => state.clearStoreData
+  );
   const selectedDate = useDateStore((state) => state.selectedDate);
   const setSelectedDate = useDateStore((state) => state.setSelectedDate);
+  const { refetchPartners } = useTravelers();
+  const clearHostelCache = useHostelAssignmentStore(
+    (state) => state.clearCache
+  );
+  const clearAssignmentCache = useAssignmentStore((state) => state.clearCache);
   const partners = useTravelerStore((state) => state.partners);
   const fetchPartnersByDate = useTravelerStore(
     (state) => state.fetchPartnersByDate
   );
+
+  // Handle refresh data
+  const handleRefreshData = async () => {
+    try {
+      setIsRefreshing(true);
+
+      // 1. Clear all cached data from stores
+      clearPartnerStoreData(); // Clear partner data
+      clearHostelCache(); // Clear hostel assignments
+      clearAssignmentCache(); // Clear room assignments
+
+      // 2. Refetch partners with forceRefresh flag
+      await refetchPartners(selectedDate, true);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast.error("Error al actualizar datos");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Combined useEffect for tracking partner changes and refreshing data
   useEffect(() => {
@@ -107,6 +139,19 @@ export function PartnerSelector() {
             <Plus className="h-4 w-4 mr-1" />
           </Button>
         )}
+
+        {/* Refresh button */}
+        <Button
+          onClick={handleRefreshData}
+          variant="outline"
+          size="sm"
+          disabled={isRefreshing}
+          title="Recargar datos"
+        >
+          <RefreshCcw
+            className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+          />
+        </Button>
       </div>
 
       {/* Partner information - No props needed now */}

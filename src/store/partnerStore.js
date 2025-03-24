@@ -43,6 +43,27 @@ export const usePartnerStore = create(
       setIndividuals: (individuals) => set({ individuals }),
       setHostelAssignments: (assignments) =>
         set({ hostelAssignments: assignments }),
+
+      // Reset store data function to clear persisted data
+      clearStoreData: () => {
+        set({
+          selectedPartner: null,
+          groups: [],
+          individuals: [],
+          hostelAssignments: [],
+        });
+
+        // Trigger partner-cleared event that components can listen for
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("partner-cleared", {
+              detail: { cleared: true },
+            })
+          );
+        }
+
+        toast.success("Datos de partners actualizados");
+      },
     }),
     {
       name: "partner-storage", // Unique name for localStorage key
