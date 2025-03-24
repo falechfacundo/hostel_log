@@ -6,7 +6,7 @@ import { useDateStore } from "@/store/date-store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Building, Info } from "lucide-react";
-import { useHostels } from "@/hooks/useHostels";
+import { useHostelStore } from "@/store/hostelStore";
 import { HostelCard } from "@/components/hostel/hostel-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HostelAssignment } from "@/components/hostel/HostelAssignment";
@@ -17,13 +17,21 @@ export default function Albergues() {
   const selectedDate = useDateStore((state) => state.selectedDate);
   const selectedPartner = usePartnerStore((state) => state.selectedPartner);
 
-  const { hostels = [], isLoading: isLoadingHostels } = useHostels();
+  const isLoading = useHostelStore((state) => state.isLoading);
+  const hostels = useHostelStore((state) => state.hostels);
+  const error = useHostelStore((state) => state.error);
+  const fetchHostels = useHostelStore((state) => state.fetchHostels);
 
-  // Show loading state
-  if (isLoadingHostels) {
+  useEffect(() => {
+    fetchHostels();
+  }, [fetchHostels]);
+
+  if (error) {
     return (
       <div className="flex h-full">
-        <div className="p-8 flex-1 flex justify-center">Cargando datos...</div>
+        <div className="p-8 flex-1 flex justify-center text-red-500">
+          Error al cargar albergues: {error}
+        </div>
       </div>
     );
   }
@@ -33,9 +41,7 @@ export default function Albergues() {
       <div className="flex h-full">
         <div className="flex-1 p-8 overflow-auto flex flex-col gap-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-4xl font-bold text-fuchsia-pink-900">
-              Albergues
-            </h1>
+            <h1 className="text-4xl font-bold">Albergues</h1>
 
             <Button className="bg-fuchsia-pink-500 hover:bg-fuchsia-pink-600">
               <Plus className="h-4 w-4 mr-2" />

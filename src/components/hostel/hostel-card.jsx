@@ -4,12 +4,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-import { useHostels } from "@/hooks/useHostels";
-import { useRoomsByHostel } from "@/hooks/useRooms";
+// Replace TanStack Query hooks with Zustand stores
+import { useHostelStore } from "@/store/hostelStore";
+import { useRoomStore } from "@/store/roomStore";
 
 import { RoomList } from "@/components/hostel/room-list";
 import { AddRoomForm } from "@/components/hostel/add-room-form";
 import { HostelHeader } from "@/components/hostel/hostel-header";
+import { useEffect } from "react";
 
 export function HostelCard({
   hostel,
@@ -18,8 +20,21 @@ export function HostelCard({
   date,
   assignments = [],
 }) {
-  const { deleteHostel } = useHostels();
-  const { rooms = [], addRoom, deleteRoom } = useRoomsByHostel(hostel.id);
+  const { deleteHostel } = useHostelStore();
+
+  // Use the Zustand roomStore instead of the TanStack Query hook
+  const { getRoomsByHostel, fetchRoomsByHostel, addRoom, deleteRoom } =
+    useRoomStore();
+
+  // Fetch rooms when component mounts
+  useEffect(() => {
+    if (hostel?.id) {
+      fetchRoomsByHostel(hostel.id);
+    }
+  }, [hostel?.id, fetchRoomsByHostel]);
+
+  // Get rooms for this hostel from store
+  const rooms = getRoomsByHostel(hostel.id) || [];
 
   // Calculate remaining capacity for informational purposes
   const usedCapacity = rooms.reduce(
@@ -39,14 +54,17 @@ export function HostelCard({
             Capacidad: {usedCapacity}/{hostel.capacity} ({remainingCapacity}{" "}
             disponibles)
           </p>
-          <RoomList rooms={rooms} onDeleteRoom={deleteRoom} />
+          <RoomList
+            rooms={rooms}
+            onDeleteRoom={(roomId) => deleteRoom(hostel.id, roomId)}
+          />
         </div>
 
         {/* Formulario para añadir habitaciones */}
         {activeHostelId === hostel.id ? (
           <AddRoomForm
             onAddRoom={(roomData) => {
-              addRoom(roomData, hostel.capacity);
+              addRoom(hostel.id, roomData, hostel.capacity);
               setActiveHostelId(null);
             }}
             maxCapacity={remainingCapacity}

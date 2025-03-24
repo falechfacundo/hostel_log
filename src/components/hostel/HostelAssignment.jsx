@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,102 +13,127 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Check, X } from "lucide-react";
 
-import { queryClient } from "@/lib/queryClient";
-
+// Import Zustand stores
 import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
-
-import { useHostels } from "@/hooks/useHostels";
-import {
-  useHostelAssignments,
-  hostelAssignmentKeys,
-} from "@/hooks/useHostelAssignments";
+import { useHostelStore } from "@/store/hostelStore";
+import { useHostelAssignmentStore } from "@/store/hostelAssignmentStore";
 
 export function HostelAssignment() {
-  const { selectedPartner, hostelAssignments: storeAssignments } =
-    usePartnerStore();
-  const { dateStr } = useDateStore();
-  const {
-    hostels,
-    isLoading: isLoadingHostels,
-    refetch: refetchHostels,
-  } = useHostels();
+  // Use a ref to track initial load to prevent double fetching
+  const initialLoadCompleted = useRef(false);
+
+  // Add separate loading states for specific operations
+  const [isAddingAssignment, setIsAddingAssignment] = useState(false);
+  const [isRemovingAssignment, setIsRemovingAssignment] = useState({});
+
+  // Get partner data via single selector to avoid re-renders
+  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+
+  // Get date in formatted string form for consistent dependency tracking
+  const selectedDate = useDateStore((state) => state.selectedDate);
+  const dateStr = useMemo(() => {
+    return selectedDate
+      ? new Date(selectedDate).toISOString().split("T")[0]
+      : "";
+  }, [selectedDate]);
+
+  // Get hostel store state
+  const hostels = useHostelStore((state) => state.hostels);
+  const isLoadingHostels = useHostelStore((state) => state.isLoading);
+  const fetchHostels = useHostelStore((state) => state.fetchHostels);
 
   const [selectedHostel, setSelectedHostel] = useState("");
 
-  // Use our modified hook that now returns more data
-  const {
-    assignedHostels,
-    isLoading,
-    addHostelAssignment,
-    removeHostelAssignment,
-    isAdding,
-    isRemoving,
-    // Add new properties for all assignments
-    allAssignmentsForDate,
-    isLoadingAllAssignments,
-    isHostelAssigned,
-    getPartnerForHostel,
-    refetch,
-  } = useHostelAssignments(selectedPartner?.id);
+  // Get hostelAssignmentStore state and actions - always call hooks unconditionally
+  const fetchPartnerAssignments = useHostelAssignmentStore(
+    (state) => state.fetchPartnerAssignments
+  );
+  const fetchAllAssignments = useHostelAssignmentStore(
+    (state) => state.fetchAllAssignments
+  );
+  const addHostelAssignment = useHostelAssignmentStore(
+    (state) => state.addHostelAssignment
+  );
+  const removeHostelAssignment = useHostelAssignmentStore(
+    (state) => state.removeHostelAssignment
+  );
+  const isHostelAssigned = useHostelAssignmentStore(
+    (state) => state.isHostelAssigned
+  );
+  const getPartnerForHostel = useHostelAssignmentStore(
+    (state) => state.getPartnerForHostel
+  );
+  const isLoading = useHostelAssignmentStore((state) => state.isLoading);
+
+  // Get all assignments - call hooks unconditionally (fix for linter error)
+  const partnerAssignments = useHostelAssignmentStore(
+    (state) => state.partnerAssignments
+  );
+  const allAssignments = useHostelAssignmentStore(
+    (state) => state.allAssignments
+  );
+
+  // Then access the data using proper memoization AFTER the hooks
+  const displayedAssignments = useMemo(() => {
+    if (!selectedPartner?.id || !dateStr) return [];
+    const key = `${selectedPartner.id}-${dateStr}`;
+    return partnerAssignments[key] || [];
+  }, [partnerAssignments, selectedPartner?.id, dateStr]);
+
+  // Process all assignments with useMemo
+  const processedAssignments = useMemo(() => {
+    return dateStr ? allAssignments[dateStr] || [] : [];
+  }, [allAssignments, dateStr]);
 
   // Reset selected hostel when partner changes
   useEffect(() => {
     setSelectedHostel("");
   }, [selectedPartner?.id]);
 
-  // Debug log the assignments
+  // Fetch assignments with fixed dependencies and load tracking
   useEffect(() => {
-    console.log("Current partner assignedHostels:", assignedHostels);
-    console.log("All assignments for date:", allAssignmentsForDate);
-    console.log("Current date:", dateStr);
+    if (!dateStr) return;
 
-    // Force refetch when date or partner changes
-    const doRefetch = async () => {
+    // Exit early if we already completed the initial load for this date
+    if (initialLoadCompleted.current === dateStr) return;
+
+    const loadAssignments = async () => {
       try {
-        await refetch();
-        console.log("Refetched assignments");
+        // First fetch all assignments for this date (always needed)
+        await fetchAllAssignments(dateStr);
+
+        // If there's a selected partner, fetch their assignments too
+        if (selectedPartner?.id) {
+          await fetchPartnerAssignments(selectedPartner.id, dateStr);
+        }
+
+        // Mark initial load as completed for this date
+        initialLoadCompleted.current = dateStr;
       } catch (error) {
-        console.error("Error refetching:", error);
+        console.error("Error fetching assignments:", error);
       }
     };
 
-    doRefetch();
-  }, [dateStr, selectedPartner?.id, refetch]);
+    loadAssignments();
+  }, [
+    dateStr,
+    selectedPartner?.id,
+    fetchAllAssignments,
+    fetchPartnerAssignments,
+  ]);
 
-  // Use direct query results to ensure we have fresh data
-  const displayedAssignments = assignedHostels;
+  // Get list of already assigned hostel IDs with proper memoization
+  const assignedHostelIds = useMemo(() => {
+    return displayedAssignments.map((assignment) => assignment.hostel_id);
+  }, [displayedAssignments]);
 
-  // Get list of already assigned hostel IDs for current partner
-  const assignedHostelIds = displayedAssignments.map(
-    (assignment) => assignment.hostel_id
-  );
-
-  // Process all assignments for display
-  // Make sure we're using the same partner IDs in both sections
-  const processedAssignments = [...allAssignmentsForDate];
-
-  // Add any partner-specific assignments that might be missing
-  if (displayedAssignments.length > 0) {
-    // Check if each partner assignment exists in allAssignments
-    displayedAssignments.forEach((assignment) => {
-      const exists = processedAssignments.some((a) => a.id === assignment.id);
-      if (!exists) {
-        console.log(
-          "Adding missing assignment to all assignments:",
-          assignment
-        );
-        processedAssignments.push(assignment);
-      }
-    });
-  }
-
-  // Group all assignments by partner and add partner size info
-  const assignmentsByPartner = processedAssignments.reduce(
-    (groups, assignment) => {
+  // Group all assignments by partner and add partner size info with memoization
+  const assignmentsByPartner = useMemo(() => {
+    return processedAssignments.reduce((groups, assignment) => {
       const partnerId = assignment.partner_id;
 
-      // If this is the current partner but partner data is missing (for some reason),
+      // If this is the current partner but partner data is missing,
       // use the selectedPartner data
       let partnerName = assignment.partner?.name;
       let partnerSize = assignment.partner?.size || 0;
@@ -130,27 +155,28 @@ export function HostelAssignment() {
 
       groups[partnerId].assignments.push(assignment);
       return groups;
-    },
-    {}
-  );
+    }, {});
+  }, [processedAssignments, selectedPartner]);
 
-  // Fix for empty when there are assignments
-  const hasAssignments =
-    displayedAssignments.length > 0 ||
-    Object.keys(assignmentsByPartner).length > 0;
+  // Fix for empty when there are assignments - with memoization
+  const hasAssignments = useMemo(() => {
+    return (
+      displayedAssignments.length > 0 ||
+      Object.keys(assignmentsByPartner).length > 0
+    );
+  }, [displayedAssignments, assignmentsByPartner]);
 
-  // Check if we need to add the current partner to the list
-  if (
-    selectedPartner &&
-    displayedAssignments.length > 0 &&
-    !assignmentsByPartner[selectedPartner.id]
-  ) {
-    assignmentsByPartner[selectedPartner.id] = {
-      name: selectedPartner.name,
-      size: selectedPartner.size || 0,
-      assignments: displayedAssignments,
-    };
-  }
+  // Ensure selected partner is properly included in assignmentsByPartner
+  useEffect(() => {
+    if (
+      selectedPartner &&
+      displayedAssignments.length > 0 &&
+      !assignmentsByPartner[selectedPartner.id]
+    ) {
+      // This will be handled in the useMemo for assignmentsByPartner
+      // We don't need to manually update state here
+    }
+  }, [selectedPartner, displayedAssignments, assignmentsByPartner]);
 
   const handleAddHostel = async () => {
     if (!selectedPartner?.id || !selectedHostel) {
@@ -159,52 +185,65 @@ export function HostelAssignment() {
     }
 
     try {
-      await addHostelAssignment(selectedHostel);
+      // Use local loading state instead of global state
+      setIsAddingAssignment(true);
+
+      await addHostelAssignment(selectedPartner.id, selectedHostel, dateStr);
+
       // Reset the select after adding
       setSelectedHostel("");
-      // Optionally refetch hostels if their state might have changed
-      refetchHostels();
 
-      // Force refetch all assignments to make sure both sections are updated
-      queryClient.invalidateQueries({
-        queryKey: hostelAssignmentKeys.byDate(dateStr),
-      });
+      // Refresh data to make sure we have the latest - this updates through the store
+      await fetchAllAssignments(dateStr);
+      if (selectedPartner?.id) {
+        await fetchPartnerAssignments(selectedPartner.id, dateStr);
+      }
     } catch (error) {
       console.error("Error adding hostel:", error);
+      toast.error(`Error al asignar albergue: ${error.message}`);
+    } finally {
+      setIsAddingAssignment(false);
     }
   };
 
-  // Modified handler for removing a hostel assignment from any partner
+  // Handler for removing a hostel assignment
   const handleRemoveHostel = async (assignmentId, isCurrentPartner = true) => {
     try {
+      // Use local tracking for specific assignment
+      setIsRemovingAssignment((prev) => ({ ...prev, [assignmentId]: true }));
+
       await removeHostelAssignment(assignmentId);
 
-      // Refetch hostels to update availability
-      refetchHostels();
-
-      // Always invalidate both queries to ensure consistency
-      queryClient.invalidateQueries({
-        queryKey: hostelAssignmentKeys.byDate(dateStr),
-      });
-
+      // Refresh data to make sure we have the latest - this updates through the store
+      await fetchAllAssignments(dateStr);
       if (selectedPartner?.id) {
-        queryClient.invalidateQueries({
-          queryKey: hostelAssignmentKeys.byPartnerId(selectedPartner.id),
-        });
+        await fetchPartnerAssignments(selectedPartner.id, dateStr);
       }
     } catch (error) {
       console.error("Error removing hostel:", error);
+      toast.error(`Error al eliminar asignación: ${error.message}`);
+    } finally {
+      setIsRemovingAssignment((prev) => {
+        const updated = { ...prev };
+        delete updated[assignmentId];
+        return updated;
+      });
     }
   };
 
-  // Filter out already assigned hostels from the select options
-  // Now checks against ALL assignments for the date, not just this partner's
-  const availableHostels = hostels.filter(
-    (hostel) => !isHostelAssigned(hostel.id)
-  );
+  // Filter out already assigned hostels - with memoization
+  const availableHostels = useMemo(() => {
+    return hostels.filter((hostel) => !isHostelAssigned(hostel.id, dateStr));
+  }, [hostels, isHostelAssigned, dateStr]);
 
   // If no partner selected, don't render anything
   if (!selectedPartner) return null;
+
+  // Initial loading state for first data fetch
+  const isInitialLoading =
+    isLoading &&
+    displayedAssignments.length === 0 &&
+    Object.keys(assignmentsByPartner).length === 0;
 
   return (
     <Card className="mb-6">
@@ -212,47 +251,13 @@ export function HostelAssignment() {
         <CardTitle>Asignación de Albergues</CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading && displayedAssignments.length === 0 ? (
+        {isInitialLoading ? (
           <div className="flex items-center justify-center py-4">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
             <span>Cargando asignaciones...</span>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Display current partner's assignments */}
-            {displayedAssignments.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">
-                  Asignar albergues a grupo: {selectedPartner.name}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {displayedAssignments.map((assignment) => (
-                    <Badge
-                      key={assignment.id}
-                      variant="secondary"
-                      className="flex items-center gap-1 py-2 px-3"
-                    >
-                      {assignment.hostel?.name || "Desconocido"}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-4 w-4 rounded-full ml-1"
-                        onClick={() => handleRemoveHostel(assignment.id)}
-                        disabled={isRemoving}
-                      >
-                        <X className="h-3 w-3" />
-                        <span className="sr-only">Eliminar</span>
-                      </Button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground mb-2">
-                No hay albergues asignados a {selectedPartner.name}
-              </div>
-            )}
-
             {/* Selector for adding new hostel assignments */}
             <div className="grid grid-cols-1 gap-4">
               <div>
@@ -263,7 +268,7 @@ export function HostelAssignment() {
                   <Select
                     value={selectedHostel}
                     onValueChange={setSelectedHostel}
-                    disabled={isAdding || isLoadingHostels}
+                    disabled={isAddingAssignment || isLoadingHostels}
                     className="flex-1"
                   >
                     <SelectTrigger>
@@ -287,13 +292,13 @@ export function HostelAssignment() {
                   <Button
                     onClick={handleAddHostel}
                     disabled={
-                      isAdding ||
+                      isAddingAssignment ||
                       !selectedHostel ||
                       availableHostels.length === 0
                     }
                     className="whitespace-nowrap"
                   >
-                    {isAdding ? (
+                    {isAddingAssignment ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Asignando...
@@ -314,12 +319,7 @@ export function HostelAssignment() {
               <h3 className="text-sm font-medium mb-3">
                 Todas las asignaciones de hoy ({dateStr}):
               </h3>
-              {isLoadingAllAssignments ? (
-                <div className="flex items-center py-2">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  <span className="text-sm">Cargando...</span>
-                </div>
-              ) : Object.keys(assignmentsByPartner).length > 0 ? (
+              {Object.keys(assignmentsByPartner).length > 0 ? (
                 <div className="space-y-4">
                   {Object.entries(assignmentsByPartner).map(
                     ([partnerId, data]) => (
@@ -359,10 +359,13 @@ export function HostelAssignment() {
                                       selectedPartner?.id
                                   )
                                 }
-                                disabled={isRemoving}
+                                disabled={isRemovingAssignment[assignment.id]}
                               >
-                                <X className="h-3 w-3" />
-                                <span className="sr-only">Eliminar</span>
+                                {isRemovingAssignment[assignment.id] ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
                               </Button>
                             </Badge>
                           ))}

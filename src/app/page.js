@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 import { format } from "date-fns";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import {
   DndContext,
@@ -18,161 +18,128 @@ import {
   closestCorners,
 } from "@dnd-kit/core";
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
 
-import { useTravelers, travelerKeys } from "@/hooks/useTravelers"; // Importar travelerKeys
-import { useHostels } from "@/hooks/useHostels";
-import { useAssignmentsByDate, assignmentKeys } from "@/hooks/useAssignments";
-import { useQueryClient } from "@tanstack/react-query"; // Importar useQueryClient
+// Replace TanStack Query imports with Zustand stores
+import { usePartnerStore } from "@/store/partnerStore";
+import { useDateStore } from "@/store/date-store";
+import { useTravelerStore } from "@/store/travelerStore";
+import { useHostelStore } from "@/store/hostelStore";
+import { useAssignmentStore } from "@/store/assignmentStore";
+import { useHostelAssignmentStore } from "@/store/hostelAssignmentStore";
 
 import { Draggable } from "@/components/dashboard/draggable";
 import { Droppable } from "@/components/dashboard/droppable";
 import { IndividualsPanel } from "@/components/dashboard/individuals-panel";
 import { GroupsPanel } from "@/components/dashboard/groups-panel";
 import { HostelRooms } from "@/components/dashboard/hostel-rooms";
-import { Skeleton } from "@/components/ui/skeleton"; // Importar componente de skeleton
+import { Skeleton } from "@/components/ui/skeleton";
 import { DownloadAllRoomsButton } from "@/components/dashboard/download-all-rooms-button";
-import { queryClient } from "@/lib/queryClient";
-import { selectedPartnerKey } from "@/store/partnerStore";
-// Import the date store
-import { useDateStore } from "@/store/date-store";
-
-// Import the hostel assignments hook
-import { useHostelAssignments } from "@/hooks/useHostelAssignments";
 
 export default function Dashboard() {
-  // Use the global date store instead of local state
   const selectedDate = useDateStore((state) => state.selectedDate);
   const setSelectedDate = useDateStore((state) => state.setSelectedDate);
-  // Agregar un estado separado para tracking de asignaciones que podamos modificar directamente
+
   const [manualAssignmentStatus, setManualAssignmentStatus] = useState({
     groups: {},
     individuals: {},
   });
 
   const sensors = useSensors(useSensor(PointerSensor));
-  const queryClient = useQueryClient();
 
-  // Obtener el partner seleccionado
-  const selectedPartner = queryClient.getQueryData(selectedPartnerKey);
+  const { selectedPartner, groups, individuals } = usePartnerStore();
 
-  // Obtener datos de los hooks
-  const { groups = [], individuals = [] } = useTravelers();
-  const { hostels = [] } = useHostels();
-
-  // Get assignments data and functions from React Query hooks - pass partnerId
   const {
-    assignments = [],
-    assignGroup,
-    removeAssignment,
-    refetch: refetchAssignments,
+    hostels,
+    isLoading: isLoadingHostels,
+    fetchHostels,
+  } = useHostelStore();
+
+  const {
     isLoading: isLoadingAssignments,
-  } = useAssignmentsByDate(selectedDate, selectedPartner?.id);
+    fetchAssignmentsByDate,
+    createAssignment,
+    deleteAssignment,
+    addOptimisticAssignment,
+    updateOptimisticAssignment,
+  } = useAssignmentStore();
 
-  // Get assigned hostels for the selected partner
-  const { assignedHostels = [], isLoading: isLoadingAssignedHostels } =
-    useHostelAssignments(selectedPartner?.id);
+  const { fetchPartnerAssignments, isLoading: isLoadingAssignedHostels } =
+    useHostelAssignmentStore();
 
-  // Filter the hostels to only include those assigned to the selected partner
-  const assignedHostelIds = useMemo(() => {
-    return assignedHostels.map((assignment) => assignment.hostel_id);
-  }, [assignedHostels]);
+  // Direct access to assignments without useMemo
+  const assignments =
+    selectedPartner?.id && selectedDate
+      ? useAssignmentStore
+          .getState()
+          .getAssignmentsByDateAndPartner(selectedDate, selectedPartner.id)
+      : [];
 
-  // Filter the hostels list to only show those assigned to the selected partner
-  const filteredHostels = useMemo(() => {
-    // If no partner is selected or no hostel assignments, return an empty array
-    if (!selectedPartner?.id || assignedHostelIds.length === 0) return [];
+  // Get assigned hostels without useMemo
+  const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
+  const assignedHostels =
+    selectedPartner?.id && dateStr
+      ? useHostelAssignmentStore
+          .getState()
+          .getPartnerAssignments(selectedPartner.id, dateStr)
+      : [];
 
-    // Otherwise, filter the hostels to only include those assigned to the partner
-    return hostels.filter((hostel) => assignedHostelIds.includes(hostel.id));
-  }, [hostels, assignedHostelIds, selectedPartner?.id]);
+  // Extract hostel IDs directly
+  const assignedHostelIds = assignedHostels.map(
+    (assignment) => assignment.hostel_id
+  );
 
-  // Añadir un efecto para refrescar datos cuando la fecha cambia
+  // Filter hostels directly
+  const filteredHostels =
+    !selectedPartner?.id || assignedHostelIds.length === 0
+      ? []
+      : hostels.filter((hostel) => assignedHostelIds.includes(hostel.id));
+
   useEffect(() => {
-    const loadAssignmentsForDate = async () => {
-      // Solo cargar si tenemos un partner seleccionado
-      if (!selectedPartner?.id) {
-        return;
-      }
+    fetchHostels();
+  }, [fetchHostels]);
 
-      // Forzar un refetch inmediato para asegurar datos actualizados
-      try {
-        const freshData = await refetchAssignments();
-
-        if (freshData.data && Array.isArray(freshData.data)) {
-          // Construir un nuevo estado de asignaciones basado en los datos refrescados
-          const groupStatus = {};
-          const individualStatus = {};
-
-          freshData.data.forEach((assignment) => {
-            if (assignment.type === "group" && assignment.groupId) {
-              groupStatus[assignment.groupId] = true;
-            } else if (
-              assignment.type === "individual" &&
-              assignment.individualId
-            ) {
-              individualStatus[assignment.individualId] = true;
-            }
-          });
-
-          // Actualizar el estado manual con los datos refrescados
-          setManualAssignmentStatus({
-            groups: groupStatus,
-            individuals: individualStatus,
-          });
-        }
-      } catch (error) {
-        console.error("Error refreshing assignments:", error);
-        toast.error("Error al cargar asignaciones");
-      }
-    };
-
-    loadAssignmentsForDate();
-  }, [selectedDate, refetchAssignments, selectedPartner?.id]); // Added selectedPartner?.id as dependency
-
-  // Añadir un efecto para escuchar cambios de partner
   useEffect(() => {
-    const handlePartnerChange = () => {
-      // Refrescar todas las consultas relevantes
-      queryClient.invalidateQueries({ queryKey: travelerKeys.all });
-      queryClient.invalidateQueries({ queryKey: assignmentKeys.all });
+    if (selectedPartner?.id && selectedDate) {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
 
-      // Forzar un refetch de asignaciones
-      refetchAssignments();
-    };
+      // Fetch assignment data for the current partner and date
+      fetchAssignmentsByDate(selectedDate, selectedPartner.id);
+      fetchPartnerAssignments(selectedPartner.id, dateStr);
 
-    window.addEventListener("partner-changed", handlePartnerChange);
-
-    return () => {
-      window.removeEventListener("partner-changed", handlePartnerChange);
-    };
-  }, [refetchAssignments, queryClient]);
-
-  // Optimización: Calcular las asignaciones en memoria combinando asignaciones actuales y estado manual
-  const checkedEntities = useMemo(() => {
-    const groupStatus = { ...manualAssignmentStatus.groups };
-    const individualStatus = { ...manualAssignmentStatus.individuals };
-
-    // Procesar todas las asignaciones existentes
-    for (const assignment of assignments) {
-      if (assignment.type === "group" && assignment.groupId) {
-        groupStatus[assignment.groupId] = true;
-      } else if (assignment.type === "individual" && assignment.individualId) {
-        individualStatus[assignment.individualId] = true;
-      }
+      // Reset assignment status to avoid stale UI state
+      setManualAssignmentStatus({
+        groups: {},
+        individuals: {},
+      });
     }
+  }, [
+    selectedDate,
+    selectedPartner?.id,
+    fetchAssignmentsByDate,
+    fetchPartnerAssignments,
+  ]);
 
-    return {
-      groups: groupStatus,
-      individuals: individualStatus,
-    };
-  }, [assignments, manualAssignmentStatus]);
+  // Calculate checked entities directly
+  const groupStatus = { ...manualAssignmentStatus.groups };
+  const individualStatus = { ...manualAssignmentStatus.individuals };
 
-  const formattedDate = useMemo(() => {
-    return format(selectedDate, "yyyy-MM-dd");
-  }, [selectedDate]);
+  // Process all existing assignments
+  for (const assignment of assignments) {
+    if (assignment.type === "group" && assignment.groupId) {
+      groupStatus[assignment.groupId] = true;
+    } else if (assignment.type === "individual" && assignment.individualId) {
+      individualStatus[assignment.individualId] = true;
+    }
+  }
 
-  // Add a function to validate room capacity
+  const checkedEntities = {
+    groups: groupStatus,
+    individuals: individualStatus,
+  };
+
+  // Format date directly
+  const formattedDate = format(selectedDate, "yyyy-MM-dd");
+
   const validateRoomCapacity = useCallback(
     (draggedId, roomId) => {
       // Extract type and ID from the dragged element
@@ -201,10 +168,8 @@ export default function Dashboard() {
         };
       }
 
-      // Get room capacity
       const roomCapacity = room.capacity || 0;
 
-      // Calculate current occupancy
       let currentOccupancy = 0;
 
       // Get all assignments for this room
@@ -219,7 +184,6 @@ export default function Dashboard() {
         }
       });
 
-      // Calculate remaining capacity
       const remainingCapacity = roomCapacity - currentOccupancy;
 
       // Check if there's enough space for the group
@@ -244,40 +208,10 @@ export default function Dashboard() {
 
     if (type === "group") {
       const validation = validateRoomCapacity(active.id, over.id);
-
-      if (!validation.hasCapacity) {
-        toast("No hay suficiente espacio", {
-          description: `Espacio disponible: ${validation.remainingCapacity} personas. Necesitas: ${validation.requestedSpace} personas.`,
-          duration: 3000,
-        });
-      }
     }
   };
 
-  // Add a new function to process assignments and map them to rooms for display
-  const processRoomAssignments = useMemo(() => {
-    const roomAssignments = {};
-
-    // Skip if loading or no assignments
-    if (isLoadingAssignments || !assignments.length) {
-      return roomAssignments;
-    }
-
-    // Group assignments by roomId for easier access
-    assignments.forEach((assignment) => {
-      if (!assignment.roomId) return;
-
-      if (!roomAssignments[assignment.roomId]) {
-        roomAssignments[assignment.roomId] = [];
-      }
-
-      roomAssignments[assignment.roomId].push(assignment);
-    });
-
-    return roomAssignments;
-  }, [assignments, isLoadingAssignments]);
-
-  // Modify handleDragEnd to implement better optimistic updates
+  // Handle drag end - create assignment
   const handleDragEnd = async (event) => {
     const { active, over } = event;
 
@@ -328,104 +262,8 @@ export default function Dashboard() {
         throw new Error("No se pudo encontrar la entidad o la habitación");
       }
 
-      // Show toast for optimistic update
-      toast.info(
-        `Asignando ${
-          type === "group" ? "grupo" : "persona"
-        } a la habitación...`,
-        { id: "assignment-progress", duration: 1000 }
-      );
-
-      // Generar un ID temporal pero consistente basado en datos determinísticos
-      const tempId = `temp-${type}-${entityId}-${room.id}-${format(
-        selectedDate,
-        "yyyyMMdd"
-      )}`;
-
-      // Add partner context to the optimistic assignment
-      const optimisticAssignment = {
-        id: tempId,
-        roomId: room.id,
-        date: format(selectedDate, "yyyy-MM-dd"),
-        type: type,
-        groupId: type === "group" ? entityId : null,
-        individualId: type === "individual" ? entityId : null,
-        entity: {
-          ...JSON.parse(JSON.stringify(entity)),
-          partner_id: selectedPartner.id, // Ensure partner context is included
-        },
-        isOptimistic: true,
-      };
-
-      // Update UI immediately with optimistic assignment
-      const currentAssignments = [...assignments, optimisticAssignment];
-
-      // Update the assignments cache with optimistic data
-      queryClient.setQueryData(
-        assignmentKeys.byDateAndPartner(
-          format(selectedDate, "yyyy-MM-dd"),
-          selectedPartner.id
-        ),
-        currentAssignments
-      );
-
-      // Also update the general assignments cache by date
-      queryClient.setQueryData(
-        assignmentKeys.byDate(format(selectedDate, "yyyy-MM-dd")),
-        (oldAssignments = []) => {
-          // Remove any temporary assignments for this entity to avoid duplicates
-          const filtered = oldAssignments.filter(
-            (a) =>
-              !(
-                a.isOptimistic &&
-                ((type === "group" && a.groupId === entityId) ||
-                  (type === "individual" && a.individualId === entityId))
-              )
-          );
-          return [...filtered, optimisticAssignment];
-        }
-      );
-
-      // Update entity's assigned status in the cache
-      if (type === "group") {
-        // Update groups cache
-        queryClient.setQueryData(
-          travelerKeys.groups.lists(),
-          (oldGroups = []) =>
-            oldGroups.map((g) =>
-              g.id === entityId ? { ...g, isAssigned: true } : g
-            )
-        );
-
-        // Also update the partner's groups
-        queryClient.setQueryData(
-          ["partners", selectedPartner.id, "groups"],
-          (oldGroups = []) =>
-            oldGroups.map((g) =>
-              g.id === entityId ? { ...g, isAssigned: true } : g
-            )
-        );
-      } else {
-        // Update individuals cache
-        queryClient.setQueryData(
-          travelerKeys.individuals.lists(),
-          (oldIndividuals = []) =>
-            oldIndividuals.map((i) =>
-              i.id === entityId ? { ...i, isAssigned: true } : i
-            )
-        );
-
-        // Also update the partner's individuals
-        queryClient.setQueryData(
-          ["partners", selectedPartner.id, "individuals"],
-          (oldIndividuals = []) =>
-            oldIndividuals.map((i) =>
-              i.id === entityId ? { ...i, isAssigned: true } : i
-            )
-        );
-      }
-
-      // Manually update the local state for immediate UI update
+      // First update local state to prevent UI from allowing duplicate drags
+      // while the server request is in progress
       setManualAssignmentStatus((prevState) => {
         if (type === "group") {
           return {
@@ -440,61 +278,72 @@ export default function Dashboard() {
         }
       });
 
-      // Execute the real assignment mutation in the background
-      const realAssignment = await assignGroup({
-        draggedId: active.id,
-        roomId: over.id,
-        date: selectedDate,
+      // Execute the assignment directly without optimistic updates
+      const realAssignment = await createAssignment(
+        active.id,
+        over.id,
+        selectedDate
+      );
+
+      // Refresh assignments to ensure data consistency
+      await fetchAssignmentsByDate(selectedDate, selectedPartner.id);
+    } catch (error) {
+      // Revert local state on error
+      const [type, ...idParts] = active.id.split("-");
+      const entityId = idParts.join("-");
+
+      setManualAssignmentStatus((prevState) => {
+        if (type === "group") {
+          return {
+            ...prevState,
+            groups: { ...prevState.groups, [entityId]: false },
+          };
+        } else {
+          return {
+            ...prevState,
+            individuals: { ...prevState.individuals, [entityId]: false },
+          };
+        }
       });
 
-      // Update the optimistic assignment with the real data
-      queryClient.setQueryData(
-        assignmentKeys.byDateAndPartner(
-          format(selectedDate, "yyyy-MM-dd"),
-          selectedPartner.id
-        ),
-        (oldAssignments = []) =>
-          oldAssignments.map((assignment) =>
-            assignment.id === tempId
-              ? {
-                  ...assignment,
-                  id: realAssignment.id,
-                  isOptimistic: false,
-                  entity: realAssignment.entity, // Use the real entity data from server
-                }
-              : assignment
-          )
-      );
-
-      // Also update the general cache
-      queryClient.setQueryData(
-        assignmentKeys.byDate(format(selectedDate, "yyyy-MM-dd")),
-        (oldAssignments = []) =>
-          oldAssignments.map((assignment) =>
-            assignment.id === tempId
-              ? {
-                  ...assignment,
-                  id: realAssignment.id,
-                  isOptimistic: false,
-                  entity: realAssignment.entity,
-                }
-              : assignment
-          )
-      );
-    } catch (error) {
-      // Revert optimistic updates
+      // Show error toast
       toast.error(`Error al crear asignación: ${error.message}`, {
         id: "assignment-progress",
       });
-      refetchAssignments();
+
+      // Refresh data to ensure correct state
+      fetchAssignmentsByDate(selectedDate, selectedPartner?.id);
       console.error("Error completo:", error);
     }
   };
 
-  // Create a wrapper function around removeAssignment to update local state
+  // Process room assignments directly, avoiding duplicates
+  const processRoomAssignments = {};
+
+  // Skip if loading or no assignments
+  if (!isLoadingAssignments && assignments.length) {
+    // Use a Map to track assignment IDs
+    const processedAssignments = new Map();
+
+    assignments.forEach((assignment) => {
+      if (!assignment.roomId) return;
+
+      // Skip if we've already processed this assignment
+      if (processedAssignments.has(assignment.id)) return;
+      processedAssignments.set(assignment.id, true);
+
+      if (!processRoomAssignments[assignment.roomId]) {
+        processRoomAssignments[assignment.roomId] = [];
+      }
+
+      processRoomAssignments[assignment.roomId].push(assignment);
+    });
+  }
+
+  // Handle assignment removal
   const handleRemoveAssignment = async (assignmentId) => {
     try {
-      // Find the assignment before removing it to know which entity to unmark
+      // Find the assignment before removing it
       const assignmentToRemove = assignments.find((a) => a.id === assignmentId);
 
       if (!assignmentToRemove) {
@@ -502,8 +351,8 @@ export default function Dashboard() {
         return;
       }
 
-      // Call the original removeAssignment function
-      await removeAssignment(assignmentId);
+      // Call the delete assignment function from store
+      await deleteAssignment(assignmentId);
 
       // Update local state to mark entity as unassigned
       if (assignmentToRemove.type === "group" && assignmentToRemove.groupId) {
@@ -532,60 +381,16 @@ export default function Dashboard() {
     }
   };
 
-  // Add a new function for forced removal from full rooms
+  // Forced removal from full rooms
   const handleForceRemoval = async (assignmentId, roomId) => {
     try {
-      // Use the new wrapper function instead of calling removeAssignment directly
       await handleRemoveAssignment(assignmentId);
     } catch (error) {
       console.error("Error al eliminar asignación:", error);
     }
   };
 
-  // Replace the date change handler to use the global store
-  const handleDateChange = (e) => {
-    const newDateString = e.target.value;
-    const newDate = new Date(newDateString + "T00:00:00");
-
-    if (isNaN(newDate.getTime())) {
-      toast.error("Fecha inválida");
-      return;
-    }
-
-    // Mostrar indicador de carga
-    toast.info("Cargando asignaciones...", {
-      id: "loading-assignments",
-      duration: 1500,
-    });
-
-    // Primero invalidar las consultas para la nueva fecha para forzar una recarga completa
-    const newDateKey = format(newDate, "yyyy-MM-dd");
-
-    // Invalidate with partner context when available
-    if (selectedPartner?.id) {
-      queryClient.invalidateQueries({
-        queryKey: assignmentKeys.byDateAndPartner(
-          newDateKey,
-          selectedPartner.id
-        ),
-      });
-    } else {
-      queryClient.invalidateQueries({
-        queryKey: assignmentKeys.byDate(newDateKey),
-      });
-    }
-
-    // Limpiar el estado de asignaciones manuales
-    setManualAssignmentStatus({
-      groups: {},
-      individuals: {},
-    });
-
-    // Actualizar la fecha en el store global
-    setSelectedDate(newDate);
-  };
-
-  // Si no hay partner seleccionado, mostrar un mensaje
+  // Show empty state if no partner selected
   if (!selectedPartner) {
     return (
       <ProtectedRoute>
@@ -617,87 +422,23 @@ export default function Dashboard() {
             modifiers={[restrictToWindowEdges]}
           >
             <div className="flex gap-8">
-              {/* Panel izquierdo de grupos e individuales */}
+              {/* Left panel with groups and individuals */}
               <div className="w-1/4 space-y-6">
-                {/* Mostrar skeleton o componente normal dependiendo del estado de carga */}
-                {isLoadingAssignments ? (
-                  <>
-                    {/* Skeleton para el panel de grupos */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                          <Users className="h-5 w-5" />
-                          Grupos Disponibles
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {[1, 2, 3].map((i) => (
-                          <Skeleton
-                            key={i}
-                            className="h-16 w-full rounded-lg"
-                          />
-                        ))}
-                      </CardContent>
-                    </Card>
-
-                    {/* Skeleton para el panel de individuales */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                          <User className="h-5 w-5" />
-                          Personas Individuales
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {[1, 2].map((i) => (
-                          <Skeleton
-                            key={i}
-                            className="h-12 w-full rounded-lg"
-                          />
-                        ))}
-                      </CardContent>
-                    </Card>
-                  </>
-                ) : (
-                  <>
-                    <GroupsPanel
-                      groups={groups}
-                      assignedStatus={checkedEntities.groups}
-                    />
-                    <IndividualsPanel
-                      individuals={individuals}
-                      assignedStatus={checkedEntities.individuals}
-                    />
-                  </>
-                )}
+                <GroupsPanel
+                  groups={groups}
+                  assignedStatus={checkedEntities.groups}
+                />
+                <IndividualsPanel
+                  individuals={individuals}
+                  assignedStatus={checkedEntities.individuals}
+                />
               </div>
 
-              {/* Panel de albergues */}
+              {/* Hostels panel */}
               <div className="flex-1">
                 <div className="space-y-6">
-                  {isLoadingAssignments || isLoadingAssignedHostels ? (
-                    // Mostrar skeletons para los hostels cuando está cargando
-                    <>
-                      {[1, 2].map((hostelIndex) => (
-                        <Card key={`skeleton-hostel-${hostelIndex}`}>
-                          <CardHeader>
-                            <Skeleton className="h-6 w-40" />
-                          </CardHeader>
-                          <CardContent>
-                            <div className="grid grid-cols-2 gap-4">
-                              {[1, 2, 3, 4].map((roomIndex) => (
-                                <Skeleton
-                                  key={`skeleton-room-${roomIndex}`}
-                                  className="h-24 w-full rounded-lg"
-                                />
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </>
-                  ) : filteredHostels.length > 0 ? (
-                    // Mostrar solo los hostels asignados al partner seleccionado
+                  {filteredHostels.length > 0 ? (
+                    // Show only hostels assigned to the selected partner
                     filteredHostels.map((hostel) => (
                       <Card key={hostel.id}>
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -706,7 +447,7 @@ export default function Dashboard() {
                             {hostel.name}
                           </CardTitle>
 
-                          {/* Botón para descargar todas las habitaciones */}
+                          {/* Button to download all rooms */}
                           <DownloadAllRoomsButton
                             hostel={hostel}
                             assignments={assignments}
@@ -719,29 +460,29 @@ export default function Dashboard() {
                           <HostelRooms
                             hostel={hostel}
                             assignments={assignments}
-                            roomAssignments={processRoomAssignments} // Pass the processed assignments
-                            removeAssignment={handleRemoveAssignment} // Pass the wrapper function instead
-                            forceRemoval={handleForceRemoval} // Add the force removal handler
+                            roomAssignments={processRoomAssignments} // Pass processed assignments
+                            removeAssignment={handleRemoveAssignment}
+                            forceRemoval={handleForceRemoval}
                             entities={{
-                              groups, // Pasar los grupos completos
-                              individuals, // Pasar los individuos completos
+                              groups, // Pass complete groups
+                              individuals, // Pass complete individuals
                             }}
-                            date={selectedDate} // Pasar la fecha seleccionada
+                            date={selectedDate} // Pass selected date
                           />
                         </CardContent>
                       </Card>
                     ))
                   ) : (
-                    // Mostrar mensaje cuando no hay albergues asignados
+                    // Show message when no hostels are assigned
                     <Card>
                       <CardContent className="flex flex-col items-center justify-center py-10">
                         <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-medium text-center">
-                          No hay albergues asignados a este partner
+                          No hay albergues asignados a este grupo
                         </h3>
                         <p className="text-sm text-muted-foreground text-center mt-1">
                           Usa la sección &ldquo;Asignación de Albergues&rdquo;
-                          para asignar albergues a este partner
+                          para asignar albergues a este grupo
                         </p>
                       </CardContent>
                     </Card>

@@ -14,14 +14,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { useTravelers } from "@/hooks/useTravelers";
+// Replace useTravelers with useTravelerStore
+import { useTravelerStore } from "@/store/travelerStore";
+import { usePartnerStore } from "@/store/partnerStore";
 
 export function BulkGroupImport() {
   const [text, setText] = useState("");
   const [preview, setPreview] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const { addGroup, selectedPartner } = useTravelers(); // Use addGroup from useTravelers
+
+  // Get the createGroup function directly from the store
+  const createGroup = useTravelerStore((state) => state.createGroup);
+  // Get the selected partner from the partner store
+  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
 
   const parseGroups = (text) => {
     // Dividir por líneas y limpiar espacios
@@ -80,14 +86,15 @@ export function BulkGroupImport() {
           partnerId: selectedPartner.id,
         };
 
-        // Use the addGroup function from useTravelers
-        addGroup(groupData);
+        // Use the createGroup function directly from the store
+        await createGroup(groupData);
         importedCount++;
       }
 
       setText("");
       setPreview([]);
       setIsOpen(false);
+      toast.success(`Importados ${importedCount} grupos con éxito`);
     } catch (error) {
       toast.error(`Error al importar grupos: ${error.message}`);
     } finally {
@@ -98,7 +105,7 @@ export function BulkGroupImport() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button className="bg-fuchsia-pink-500 hover:bg-fuchsia-pink-600 gap-2">
           <Upload className="h-4 w-4" />
           Importar desde Texto
         </Button>

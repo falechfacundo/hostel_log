@@ -1,4 +1,4 @@
-import { useTravelers } from "@/hooks/useTravelers";
+import { useTravelerStore } from "@/store/travelerStore";
 
 import { BackpackToggle } from "@/components/ui/backpack-toggle";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,8 @@ export function IndividualsList({
   isLoading = false,
   onRemoveIndividual,
 }) {
-  const { updatePerson } = useTravelers();
+  // Get the updatePerson function directly from the store
+  const updatePerson = useTravelerStore((state) => state.updatePerson);
 
   // Función para formatear fechas en formato español
   const formatDateOrDefault = (dateString) => {

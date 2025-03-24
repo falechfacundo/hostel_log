@@ -1,70 +1,65 @@
 import { useState, useEffect } from "react";
-
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ChevronDown, Trash2, Loader2 } from "lucide-react";
 
+// Import stores directly
 import { useAuthStore } from "@/store/authStore";
+import { usePartnerStore } from "@/store/partnerStore";
+import { useTravelerStore } from "@/store/travelerStore";
 
 export function PartnerDropdown({
-  partners,
-  selectedPartner,
-  onSelectPartner,
   onDeletePartner,
   isDeleting,
   partnerToDelete,
-  disabled,
 }) {
-  // Estado local para mantener una selección optimista
-  const [optimisticSelection, setOptimisticSelection] = useState(null);
-  const [filteredPartners, setFilteredPartners] = useState(partners);
+  // Get data directly from stores
+  const partners = useTravelerStore((state) => state.partners);
+  const isLoadingPartners = useTravelerStore((state) => state.isLoading);
+  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+  const setSelectedPartner = usePartnerStore(
+    (state) => state.setSelectedPartner
+  );
+  const setGroups = usePartnerStore((state) => state.setGroups);
+  const setIndividuals = usePartnerStore((state) => state.setIndividuals);
   const userProfile = useAuthStore((state) => state.userProfile);
 
-  // Keep filtered partners in sync with incoming partners
-  useEffect(() => {
-    setFilteredPartners(partners);
-  }, [partners]);
-
-  // Determinar qué partner mostrar en el dropdown (el optimista o el real)
-  const displayPartner = optimisticSelection || selectedPartner;
+  // Check if component is disabled based on loading states
+  const disabled = isLoadingPartners || isDeleting;
 
   // If current selection is not in the partners list, use the first partner if available
   useEffect(() => {
     if (
-      displayPartner &&
       partners.length > 0 &&
-      !partners.some((p) => p.id === displayPartner.id)
+      (!selectedPartner ||
+        !partners.some((p) => String(p.id) === String(selectedPartner.id)))
     ) {
       const firstAvailablePartner = partners[0];
-      onSelectPartner(firstAvailablePartner);
+      handleSelectPartner(firstAvailablePartner);
     }
-  }, [displayPartner, partners, onSelectPartner]);
+  }, [selectedPartner, partners]);
 
-  const handleSelectPartner = (e) => {
-    const selectedId = e.target.value;
-
-    // Avoid unnecessary work if no value selected
-    if (!selectedId) return;
-
-    // Find the partner with this ID
-    const partner = partners.find((p) => String(p.id) === String(selectedId));
-
-    if (!partner) return;
-
+  const handleSelectPartner = (partner) => {
     // Check if this is already the selected partner
     if (selectedPartner && partner.id === selectedPartner.id) {
-      console.log("Partner already selected:", partner.name);
       return;
     }
 
-    // Actualización optimista de la UI
-    setOptimisticSelection(partner);
+    // Update data in store
+    setSelectedPartner(partner);
+    if (partner.groups) setGroups(partner.groups);
+    if (partner.individuals) setIndividuals(partner.individuals);
+  };
 
-    // Llamar a onSelectPartner después de la actualización local
-    onSelectPartner(partner);
+  // Handle select change event
+  const handleSelectChange = (e) => {
+    const selectedId = e.target.value;
+    if (!selectedId) return;
 
-    // Limpiar la selección optimista después de un tiempo
-    setTimeout(() => setOptimisticSelection(null), 500);
+    const partner = partners.find((p) => String(p.id) === String(selectedId));
+    if (partner) {
+      handleSelectPartner(partner);
+    }
   };
 
   // Show a message if no partners available
@@ -89,9 +84,9 @@ export function PartnerDropdown({
       <div className="relative flex-1">
         <select
           className="w-full py-2 pl-3 pr-10 border rounded-md bg-white appearance-none"
-          value={displayPartner?.id || ""}
-          onChange={handleSelectPartner}
-          disabled={disabled || isDeleting}
+          value={selectedPartner?.id || ""}
+          onChange={handleSelectChange}
+          disabled={disabled}
         >
           {partners.map((partner) => (
             <option key={partner.id} value={partner.id}>
@@ -103,17 +98,17 @@ export function PartnerDropdown({
       </div>
 
       {/* Botón para eliminar el partner seleccionado */}
-      {displayPartner && userProfile?.role == "admin" && (
+      {selectedPartner && userProfile?.role === "admin" && (
         <Tooltip content="Eliminar partner">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onDeletePartner(displayPartner)}
+            onClick={() => onDeletePartner(selectedPartner)}
             className="h-9 w-9 text-red-500 hover:text-red-700 hover:bg-red-50"
             title="Eliminar partner"
-            disabled={disabled || isDeleting}
+            disabled={disabled}
           >
-            {isDeleting && partnerToDelete?.id === displayPartner.id ? (
+            {isDeleting && partnerToDelete?.id === selectedPartner.id ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Trash2 className="h-4 w-4" />

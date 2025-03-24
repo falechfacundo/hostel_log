@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useHostels } from "@/hooks/useHostels";
+// Replace TanStack Query hook with Zustand store
+import { useHostelStore } from "@/store/hostelStore";
 import { toast } from "sonner";
 
 export default function NewHostel() {
   const router = useRouter();
-  const { addHostel } = useHostels();
+  // Use Zustand store directly instead of the React Query hook
+  const addHostel = useHostelStore((state) => state.addHostel);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -39,7 +41,7 @@ export default function NewHostel() {
     setIsSubmitting(true);
 
     try {
-      // Ensure capacity is sent as a number, not string
+      // Call the Zustand store function directly
       await addHostel({
         ...formData,
         capacity: capacity,

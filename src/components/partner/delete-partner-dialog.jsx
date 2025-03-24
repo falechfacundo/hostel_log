@@ -8,17 +8,78 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Trash2, Loader2 } from "lucide-react";
+import { useTravelerStore } from "@/store/travelerStore";
+import { usePartnerStore } from "@/store/partnerStore";
+import { useDateStore } from "@/store/date-store";
 
 export function DeletePartnerDialog({
   open,
   onOpenChange,
   partner,
-  onConfirmDelete,
   deleting,
+  setDeleting,
+  setPartnerToDelete,
 }) {
+  // Get store functions and values
+  const deletePartner = useTravelerStore((state) => state.deletePartner);
+  const fetchPartnersByDate = useTravelerStore(
+    (state) => state.fetchPartnersByDate
+  );
+  const partners = useTravelerStore((state) => state.partners);
+  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+  const setSelectedPartner = usePartnerStore(
+    (state) => state.setSelectedPartner
+  );
+  const setGroups = usePartnerStore((state) => state.setGroups);
+  const setIndividuals = usePartnerStore((state) => state.setIndividuals);
+  const selectedDate = useDateStore((state) => state.selectedDate);
+
   const handleOpenChange = (open) => {
     if (!deleting) {
       onOpenChange(open);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!partner?.id) return;
+
+    try {
+      setDeleting(true);
+
+      // Store the partner we're deleting and get next available partner
+      const partnerBeingDeletedId = partner.id;
+      const otherPartners = partners.filter(
+        (p) => p.id !== partnerBeingDeletedId
+      );
+      const nextPartner = otherPartners.length > 0 ? otherPartners[0] : null;
+
+      // Delete the partner
+      await deletePartner(partnerBeingDeletedId);
+
+      // Update partners list
+      await fetchPartnersByDate(selectedDate);
+
+      // If the deleted partner was selected
+      if (selectedPartner?.id === partnerBeingDeletedId) {
+        if (nextPartner) {
+          // If we have another partner, select it
+          setSelectedPartner(nextPartner);
+          if (nextPartner.groups) setGroups(nextPartner.groups);
+          if (nextPartner.individuals) setIndividuals(nextPartner.individuals);
+        } else {
+          setSelectedPartner(null);
+          setGroups([]);
+          setIndividuals([]);
+        }
+      }
+
+      // Close dialog
+      onOpenChange(false);
+      setPartnerToDelete(null);
+    } catch (error) {
+      console.log("Error deleting partner:", error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -56,7 +117,7 @@ export function DeletePartnerDialog({
           </Button>
           <Button
             variant="destructive"
-            onClick={onConfirmDelete}
+            onClick={handleConfirmDelete}
             disabled={deleting}
           >
             {deleting ? (

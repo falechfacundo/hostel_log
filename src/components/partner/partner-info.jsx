@@ -1,8 +1,12 @@
 import { Calendar, Users, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { usePartnerStore } from "@/store/partnerStore";
 
-export function PartnerInfo({ partner }) {
+export function PartnerInfo() {
+  // Get partner directly from store
+  const partner = usePartnerStore((state) => state.selectedPartner);
+
   if (!partner) return null;
 
   // Formatear las fechas al formato español (día/mes/año)

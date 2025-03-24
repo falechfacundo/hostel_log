@@ -1,4 +1,6 @@
-import { useTravelers } from "@/hooks/useTravelers";
+import { useTravelerStore } from "@/store/travelerStore";
+import { usePartnerStore } from "@/store/partnerStore";
+
 import { BackpackToggle } from "@/components/ui/backpack-toggle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,41 +10,71 @@ import { cn } from "@/lib/utils";
 
 export function GroupsList({
   isLoading = false,
-  // We no longer need onRemoveMember prop as we'll use the hook
+  // Other props are maintained for backward compatibility
+  groups,
+  onDeleteGroup,
+  onAddMember,
+  onRemoveMember,
+  onUpdatePerson,
 }) {
-  const {
-    updatePerson,
-    deleteGroup,
-    addPersonToGroup,
-    groups,
-    removePersonFromGroup,
-    selectedPartner,
-    individuals, // Add individuals to the destructured values from the hook
-  } = useTravelers();
+  // Get functions and state directly from the store
+  const updatePerson = useTravelerStore((state) => state.updatePerson);
+  const deleteGroup = useTravelerStore((state) => state.deleteGroup);
+  const addPersonToGroup = useTravelerStore((state) => state.addPersonToGroup);
+  const removePersonFromGroup = useTravelerStore(
+    (state) => state.removePersonFromGroup
+  );
+  const storeGroups = usePartnerStore((state) => state.groups);
+  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+  const storeIndividuals = usePartnerStore((state) => state.individuals);
 
   // Estado para seguir qué elementos están siendo eliminados
   const [deletingMembers, setDeletingMembers] = useState({});
+
+  // Use store functions if no props were provided (for backward compatibility)
+  const effectiveGroups = groups || storeGroups;
+  const effectiveDeleteGroup = onDeleteGroup || deleteGroup;
+  const effectiveAddMember =
+    onAddMember ||
+    ((groupId, personData) => {
+      const group = storeGroups.find((g) => g.id === groupId);
+      if (group) {
+        addPersonToGroup({
+          groupId,
+          personData: {
+            ...personData,
+            partnerId: selectedPartner?.id,
+          },
+        });
+      }
+    });
+  const effectiveRemoveMember =
+    onRemoveMember ||
+    ((groupId, personId) => {
+      removePersonFromGroup({ groupId, personId });
+    });
+  const effectiveUpdatePerson = onUpdatePerson || updatePerson;
 
   // Manejador de eliminación con confirmación
   const handleDeleteGroup = (groupId) => {
     // Añadir confirmación para prevenir eliminaciones accidentales
     if (confirm(`¿Estás seguro de eliminar el grupo?`)) {
       console.log("Eliminando grupo con ID:", groupId);
-      deleteGroup(groupId); // Usamos deleteGroup directamente del hook
+      effectiveDeleteGroup(groupId);
     }
   };
 
-  // Manejador mejorado que usa removePersonFromGroup del hook
+  // Manejador mejorado para eliminar miembros
   const handleRemoveMember = (groupId, personId, personName) => {
-    // Actualizar estado para mostrar indicador de carga
+    // Update state to show loading indicator
     setDeletingMembers((prev) => ({ ...prev, [personId]: true }));
 
-    // Confirmar eliminación
+    // Confirm deletion
     if (
       confirm(`¿Quieres eliminar a ${personName || "este miembro"} del grupo?`)
     ) {
       try {
-        removePersonFromGroup({ groupId, personId });
+        effectiveRemoveMember(groupId, personId);
         // El estado se limpiará cuando el componente se actualice debido a
         // la actualización optimista, pero por si acaso:
         setTimeout(() => {
@@ -54,7 +86,7 @@ export function GroupsList({
         }, 300);
       } catch (error) {
         console.error("Error removing member:", error);
-        // Limpiar estado de eliminación
+        // Clean up deletion state
         setDeletingMembers((prev) => {
           const updated = { ...prev };
           delete updated[personId];
@@ -62,7 +94,7 @@ export function GroupsList({
         });
       }
     } else {
-      // Cancelado, limpiar estado
+      // Canceled, clean up state
       setDeletingMembers((prev) => {
         const updated = { ...prev };
         delete updated[personId];
@@ -71,20 +103,19 @@ export function GroupsList({
     }
   };
 
-  // Función para manejar el evento de añadir miembro al grupo
-  // Function to add member to group with complete data including partner_id
-  const handleAddMember = (group, personData) => {
-    const partnerId = group.partner_id;
+  // Function to add member to group with complete data
+  const handleAddMember = (groupId, personData) => {
+    const group = effectiveGroups.find((g) => g.id === groupId);
+    if (!group) return;
 
     // Count all people across all groups belonging to this partner
-    const totalPeopleInGroups = groups
-      .filter((g) => g.partner_id === partnerId)
-      .reduce((total, g) => total + (g.people?.length || 0), 0);
+    const totalPeopleInGroups = effectiveGroups.reduce(
+      (total, g) => total + (g.people?.length || 0),
+      0
+    );
 
     // Count all individuals belonging to this partner
-    const totalIndividuals = individuals
-      ? individuals.filter((i) => i.partner_id === partnerId).length
-      : 0;
+    const totalIndividuals = storeIndividuals ? storeIndividuals.length : 0;
 
     // Total people count (groups + individuals)
     const totalPeopleWithPartner = totalPeopleInGroups + totalIndividuals;
@@ -92,26 +123,21 @@ export function GroupsList({
     const partnerSizeLimit = selectedPartner?.size || 0;
 
     // Check if adding another person would exceed the partner's total capacity
-    if (totalPeopleWithPartner >= partnerSizeLimit) {
+    if (partnerSizeLimit > 0 && totalPeopleWithPartner >= partnerSizeLimit) {
       alert(
         `No se pueden agregar más personas. El socio ya tiene ${totalPeopleWithPartner} personas asignadas de un límite de ${partnerSizeLimit}.`
       );
       return;
     }
 
-    const completePersonData = {
-      ...personData,
-      partner_id: partnerId,
-    };
-
-    addPersonToGroup({ group, personData: completePersonData });
+    effectiveAddMember(groupId, personData);
   };
 
   if (isLoading) {
     return <div className="text-center py-4">Cargando grupos...</div>;
   }
 
-  if (groups.length === 0) {
+  if (effectiveGroups.length === 0) {
     return (
       <div className="bg-muted/50 rounded-lg p-8 text-center">
         <Users className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -127,7 +153,7 @@ export function GroupsList({
     <div className="md:col-span-2">
       <h2 className="text-2xl font-bold mb-4">Grupos</h2>
       <div className="space-y-4 grid gap-4 grid-cols-2">
-        {groups.map((group) => (
+        {effectiveGroups.map((group) => (
           <Card key={group.id}>
             <CardHeader className="pb-2">
               <CardTitle className="flex justify-between items-center">
@@ -155,7 +181,7 @@ export function GroupsList({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const input = e.target.elements.name;
-                  handleAddMember(group, { name: input.value }); // Usamos la función local
+                  handleAddMember(group.id, { name: input.value }); // Usamos la función local
                   input.value = "";
                 }}
               >
@@ -192,7 +218,7 @@ export function GroupsList({
                           {/* Componente toggle de mochila */}
                           <BackpackToggle
                             person={person}
-                            onUpdate={updatePerson}
+                            onUpdate={effectiveUpdatePerson}
                             disabled={deletingMembers[person.id]}
                           />
 

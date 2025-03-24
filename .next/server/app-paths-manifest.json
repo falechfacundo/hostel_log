@@ -1,0 +1,6 @@
+{
+  "/page": "app/page.js",
+  "/albergues/page": "app/albergues/page.js",
+  "/viajeros/page": "app/viajeros/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js"
+}

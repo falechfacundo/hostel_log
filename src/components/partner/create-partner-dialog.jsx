@@ -11,13 +11,32 @@ import { DatePicker } from "@/components/dashboard/date-picker";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Plus, Loader2, Calendar } from "lucide-react";
+import { toast } from "sonner";
+
+// Import stores directly
+import { useTravelerStore } from "@/store/travelerStore";
+import { usePartnerStore } from "@/store/partnerStore";
+import { useDateStore } from "@/store/date-store";
+import { format } from "date-fns";
 
 export function CreatePartnerDialog({
   open,
   onOpenChange,
-  onCreatePartner,
   creating,
+  setCreating,
 }) {
+  // Get store functions
+  const createPartner = useTravelerStore((state) => state.createPartner);
+  const fetchPartnersByDate = useTravelerStore(
+    (state) => state.fetchPartnersByDate
+  );
+  const setSelectedPartner = usePartnerStore(
+    (state) => state.setSelectedPartner
+  );
+  const setGroups = usePartnerStore((state) => state.setGroups);
+  const setIndividuals = usePartnerStore((state) => state.setIndividuals);
+  const selectedDate = useDateStore((state) => state.selectedDate);
+
   const [newPartner, setNewPartner] = useState({
     name: "",
     size: "0",
@@ -41,8 +60,37 @@ export function CreatePartnerDialog({
   };
 
   const handleCreatePartner = async () => {
-    const success = await onCreatePartner(newPartner);
-    if (success) {
+    if (!newPartner.name.trim()) {
+      toast.error("El nombre del partner es requerido");
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      const { name, size, days, startDate } = newPartner;
+      const startDateObj = startDate || new Date();
+      const formattedStartDate = format(startDateObj, "yyyy-MM-dd");
+
+      // Calculate end date by adding days to start date
+      const daysCount = parseInt(days) || 5;
+
+      // Create the new partner using the store method
+      const newPartnerData = await createPartner({
+        name,
+        size: parseInt(size) || 0,
+        days: daysCount,
+        startDate: startDateObj,
+      });
+
+      // Refresh partners for the current date
+      await fetchPartnersByDate(selectedDate);
+
+      // Automatically select the new partner
+      setSelectedPartner(newPartnerData);
+      setGroups(newPartnerData.groups || []);
+      setIndividuals(newPartnerData.individuals || []);
+
       // Reset form
       setNewPartner({
         name: "",
@@ -50,6 +98,14 @@ export function CreatePartnerDialog({
         days: "5",
         startDate: new Date(),
       });
+
+      onOpenChange(false);
+      return true;
+    } catch (error) {
+      toast.error(`Error al crear partner: ${error.message}`);
+      return false;
+    } finally {
+      setCreating(false);
     }
   };
 

@@ -7,7 +7,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Building2, LayoutDashboard, Users, LogOut } from "lucide-react";
-import { queryClient } from "@/lib/queryClient";
 
 import { PartnerSelector } from "@/components/PartnerSelector";
 import { LogoutButton } from "@/components/auth/logout-button";

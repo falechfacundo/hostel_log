@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Users } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 export function HostelHeader({ hostel, onDelete }) {
   return (
@@ -11,7 +11,11 @@ export function HostelHeader({ hostel, onDelete }) {
         <Button variant="ghost" size="icon">
           <Pencil className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => onDelete(hostel.id)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onDelete(hostel.id)} // Pass the ID parameter to onDelete
+        >
           <Trash2 className="h-4 w-4 text-red-500" />
         </Button>
       </div>
