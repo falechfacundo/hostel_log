@@ -9,9 +9,11 @@ export function IndividualsPanel({ individuals, assignedStatus = {} }) {
     return assignedStatus[individual.id] || false;
   };
 
-  // Filter out assigned individuals
+  // Filter out assigned individuals AND individuals that belong to a group
   const availableIndividuals = individuals.filter(
-    (individual) => !isIndividualAssigned(individual)
+    (individual) =>
+      !isIndividualAssigned(individual) &&
+      (!individual.group_id || individual.group_id === null)
   );
 
   return (

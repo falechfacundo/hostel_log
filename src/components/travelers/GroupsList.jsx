@@ -14,7 +14,6 @@ export function GroupsList({
   groups,
   onDeleteGroup,
   onAddMember,
-  onRemoveMember,
   onUpdatePerson,
 }) {
   // Get functions and state directly from the store
@@ -48,11 +47,6 @@ export function GroupsList({
         });
       }
     });
-  const effectiveRemoveMember =
-    onRemoveMember ||
-    ((groupId, personId) => {
-      removePersonFromGroup({ groupId, personId });
-    });
   const effectiveUpdatePerson =
     onUpdatePerson ||
     ((personData) => {
@@ -81,31 +75,20 @@ export function GroupsList({
     setDeletingMembers((prev) => ({ ...prev, [personId]: true }));
 
     // Confirm deletion
-    if (
-      confirm(`¿Quieres eliminar a ${personName || "este miembro"} del grupo?`)
-    ) {
-      try {
-        effectiveRemoveMember(groupId, personId);
-        // El estado se limpiará cuando el componente se actualice debido a
-        // la actualización optimista, pero por si acaso:
-        setTimeout(() => {
-          setDeletingMembers((prev) => {
-            const updated = { ...prev };
-            delete updated[personId];
-            return updated;
-          });
-        }, 300);
-      } catch (error) {
-        console.error("Error removing member:", error);
-        // Clean up deletion state
+    try {
+      removePersonFromGroup({ groupId, personId });
+      // El estado se limpiará cuando el componente se actualice debido a
+      // la actualización optimista, pero por si acaso:
+      setTimeout(() => {
         setDeletingMembers((prev) => {
           const updated = { ...prev };
           delete updated[personId];
           return updated;
         });
-      }
-    } else {
-      // Canceled, clean up state
+      }, 300);
+    } catch (error) {
+      console.error("Error removing member:", error);
+      // Clean up deletion state
       setDeletingMembers((prev) => {
         const updated = { ...prev };
         delete updated[personId];

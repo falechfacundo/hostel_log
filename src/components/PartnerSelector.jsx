@@ -64,10 +64,38 @@ export function PartnerSelector() {
       clearAssignmentCache(); // Clear room assignments
 
       // 2. Refetch partners with forceRefresh flag
-      await refetchPartners(selectedDate, true);
+      const refreshedPartners = await fetchPartnersByDate(selectedDate, true);
+
+      // 3. If we have a selected partner, make sure to select it again with fresh data
+      if (selectedPartner?.id) {
+        // Find the partner in the refreshed data
+        const updatedPartner = refreshedPartners.find(
+          (p) => p.id === selectedPartner.id
+        );
+        if (updatedPartner) {
+          // Re-select the partner with updated data to refresh groups and individuals
+          usePartnerStore.getState().setSelectedPartner(updatedPartner);
+
+          // Explicitly refresh groups and individuals for this partner
+          const filteredIndividuals = useTravelerStore
+            .getState()
+            .individuals.filter(
+              (ind) =>
+                ind.partner_id === updatedPartner.id &&
+                (!ind.group_id || ind.group_id === null)
+            );
+
+          const filteredGroups = useTravelerStore
+            .getState()
+            .groups.filter((grp) => grp.partner_id === updatedPartner.id);
+
+          usePartnerStore.getState().setGroups(filteredGroups);
+          usePartnerStore.getState().setIndividuals(filteredIndividuals);
+        }
+      }
     } catch (error) {
       console.error("Error refreshing data:", error);
-      toast.error("Error al actualizar datos");
+      toast.error("Error al actualizar datos: " + error.message);
     } finally {
       setIsRefreshing(false);
     }

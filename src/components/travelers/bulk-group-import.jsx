@@ -124,6 +124,22 @@ export function BulkGroupImport() {
         importedIndividualCount++;
       }
 
+      // Forzar una actualización final del estado para asegurar datos correctos
+      // Obtenemos el estado actual del travelerStore y filtramos los grupos e individuos
+      // para el partner seleccionado
+      const travelerStore = useTravelerStore.getState();
+      const partnerGroups = travelerStore.groups.filter(
+        (g) => g.partner_id === selectedPartner.id
+      );
+      const partnerIndividuals = travelerStore.individuals.filter(
+        (i) => i.partner_id === selectedPartner.id
+      );
+
+      // Actualizamos el partnerStore con los datos filtrados
+      const partnerStore = usePartnerStore.getState();
+      partnerStore.setGroups(partnerGroups);
+      partnerStore.setIndividuals(partnerIndividuals);
+
       // Reset state
       setGroupText("");
       setIndividualText("");

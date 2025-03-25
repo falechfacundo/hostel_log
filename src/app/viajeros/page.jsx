@@ -122,13 +122,6 @@ export default function Viajeros() {
     [addPersonToGroup, storeGroups, selectedPartner?.id]
   );
 
-  const handleRemoveMember = useCallback(
-    (groupId, personId) => {
-      removePersonFromGroup({ groupId, personId });
-    },
-    [removePersonFromGroup]
-  );
-
   const handleRemoveIndividual = useCallback(
     (id) => {
       deleteIndividual(id);
@@ -247,7 +240,6 @@ export default function Viajeros() {
                 isLoading={isLoading}
                 onDeleteGroup={handleDeleteGroup}
                 onAddMember={handleAddMember}
-                onRemoveMember={handleRemoveMember}
                 onUpdatePerson={updatePerson}
               />
             </div>

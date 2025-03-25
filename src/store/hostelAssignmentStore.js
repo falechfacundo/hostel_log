@@ -138,8 +138,6 @@ export const useHostelAssignmentStore = create((set, get) => ({
           isLoading: false,
         };
       });
-
-      toast.success(`Albergue asignado correctamente`);
       return data;
     } catch (error) {
       console.error("Error in addHostelAssignment:", error);
@@ -198,8 +196,6 @@ export const useHostelAssignmentStore = create((set, get) => ({
           isLoading: false,
         };
       });
-
-      toast.success("Asignación eliminada correctamente");
       return { id: assignmentId };
     } catch (error) {
       console.error("Error in removeHostelAssignment:", error);

@@ -61,8 +61,6 @@ export const usePartnerStore = create(
             })
           );
         }
-
-        toast.success("Datos de partners actualizados");
       },
     }),
     {

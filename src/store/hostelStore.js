@@ -56,7 +56,6 @@ export const useHostelStore = create((set, get) => {
           isLoading: false,
         }));
 
-        toast.success(`Albergue "${hostelData.name}" creado correctamente`);
         return result.hostel;
       } catch (error) {
         console.error("Error in addHostel:", error);
@@ -84,7 +83,6 @@ export const useHostelStore = create((set, get) => {
           isLoading: false,
         }));
 
-        toast.success(`Albergue actualizado correctamente`);
         return result.hostel;
       } catch (error) {
         console.error("Error in updateHostel:", error);
@@ -118,9 +116,6 @@ export const useHostelStore = create((set, get) => {
           isLoading: false,
         }));
 
-        toast.success(
-          `Albergue "${hostelToDelete.name}" eliminado correctamente`
-        );
         return { id };
       } catch (error) {
         console.error("Error in deleteHostel:", error);

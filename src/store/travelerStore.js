@@ -310,7 +310,11 @@ export const useTravelerStore = create((set, get) => {
         // Actualizar PartnerStore
         const partnerStore = usePartnerStore.getState();
         if (partnerStore.selectedPartner?.id === partnerId) {
-          partnerStore.setGroups([...get().groups]);
+          // Filtramos los grupos para incluir solo los del partner seleccionado
+          const partnerGroups = get().groups.filter(
+            (g) => g.partner_id === partnerId
+          );
+          partnerStore.setGroups(partnerGroups);
         }
 
         return fullGroup;
@@ -362,7 +366,12 @@ export const useTravelerStore = create((set, get) => {
         // Actualizar PartnerStore
         const partnerStore = usePartnerStore.getState();
         if (partnerStore.selectedPartner?.id === groupToDelete.partner_id) {
-          partnerStore.setGroups(get().groups.filter((g) => g.id !== id));
+          // Filtramos los grupos para incluir solo los del partner seleccionado
+          const partnerId = partnerStore.selectedPartner.id;
+          const partnerGroups = get().groups.filter(
+            (g) => g.partner_id === partnerId && g.id !== id
+          );
+          partnerStore.setGroups(partnerGroups);
         }
 
         return groupToDelete;
@@ -575,7 +584,11 @@ export const useTravelerStore = create((set, get) => {
         // Actualizar PartnerStore
         const partnerStore = usePartnerStore.getState();
         if (partnerStore.selectedPartner?.id === partnerId) {
-          partnerStore.setGroups([...get().groups]);
+          // Filtramos los grupos para incluir solo los del partner seleccionado
+          const partnerGroups = get().groups.filter(
+            (g) => g.partner_id === partnerId
+          );
+          partnerStore.setGroups(partnerGroups);
         }
 
         return {
@@ -601,6 +614,110 @@ export const useTravelerStore = create((set, get) => {
           throw new Error("Group not found");
         }
 
+        console.log("Removing person from group:", groupId, personId);
+
+        // Obtener las personas del grupo para verificar si quedaría solo 1 después de eliminar
+        const groupPeople = group.people || [];
+        console.log("Group people:", groupPeople);
+
+        const remainingPeople = groupPeople.filter((p) => p.id !== personId);
+        console.log("Remaining people:", remainingPeople);
+
+        // Caso especial: quedaría solo 1 persona en el grupo
+        if (remainingPeople.length === 1) {
+          const lastPerson = remainingPeople[0];
+          console.log("Last person in group:", lastPerson);
+
+          // Convertir la última persona en individual (quitar group_id)
+          const { data: updatedPerson, error: updateError } = await supabase
+            .from("person")
+            .update({ group_id: null })
+            .eq("id", lastPerson.id)
+            .select()
+            .single();
+
+          console.log(
+            "Error converting last person to individual:",
+            updateError
+          );
+          if (updateError)
+            throw new Error(
+              `Error converting last person to individual: ${updateError}`
+            );
+          console.log("Updated person:", updatedPerson);
+
+          // Eliminar la persona actual
+          const { error: personError } = await supabase
+            .from("person")
+            .delete()
+            .eq("id", personId);
+
+          if (personError)
+            throw new Error(`Error removing person: ${personError.message}`);
+
+          // Eliminar el grupo ya que no tiene sentido mantenerlo
+          const { error: groupDeleteError } = await supabase
+            .from("groups")
+            .delete()
+            .eq("id", groupId);
+
+          console.log("Error deleting group:", groupDeleteError);
+
+          if (groupDeleteError)
+            throw new Error(
+              `Error deleting group: ${groupDeleteError.message}`
+            );
+
+          // Actualizar estado
+          set((state) => {
+            // Agregar la persona convertida a individuals
+            const newIndividuals = [...state.individuals, updatedPerson];
+
+            // Filtrar el grupo eliminado
+            const filteredGroups = state.groups.filter((g) => g.id !== groupId);
+
+            // Actualizar el partner correspondiente
+            const partnerId = group.partner_id;
+            const updatedPartners = state.partners.map((partner) => {
+              if (partner.id === partnerId) {
+                return {
+                  ...partner,
+                  groups: (partner.groups || []).filter(
+                    (g) => g.id !== groupId
+                  ),
+                  individuals: [...(partner.individuals || []), updatedPerson],
+                };
+              }
+              return partner;
+            });
+
+            return {
+              groups: filteredGroups,
+              individuals: newIndividuals,
+              partners: updatedPartners,
+              isLoading: false,
+            };
+          });
+
+          // Actualizar PartnerStore
+          const partnerStore = usePartnerStore.getState();
+          const partnerId = group.partner_id;
+          if (partnerStore.selectedPartner?.id === partnerId) {
+            // Filtramos tanto grupos como individuales
+            const partnerGroups = get().groups.filter(
+              (g) => g.partner_id === partnerId
+            );
+            const partnerIndividuals = get().individuals.filter(
+              (i) => i.partner_id === partnerId
+            );
+            partnerStore.setGroups(partnerGroups);
+            partnerStore.setIndividuals(partnerIndividuals);
+          }
+
+          return { groupId, deleted: true, convertedPersonId: lastPerson.id };
+        }
+
+        // Caso normal: eliminar persona y quedan 2+ personas (o 0 personas)
         // Eliminar la persona
         const { error: personError } = await supabase
           .from("person")
@@ -652,13 +769,15 @@ export const useTravelerStore = create((set, get) => {
             };
           });
 
-          // Actualizar PartnerStore para mantener sincronía
+          // Actualizar PartnerStore
           const partnerStore = usePartnerStore.getState();
           const partnerId = group.partner_id;
           if (partnerStore.selectedPartner?.id === partnerId) {
-            partnerStore.setGroups(
-              get().groups.filter((g) => g.id !== groupId)
+            // Filtramos los grupos para incluir solo los del partner seleccionado
+            const partnerGroups = get().groups.filter(
+              (g) => g.partner_id === partnerId
             );
+            partnerStore.setGroups(partnerGroups);
           }
 
           return { groupId, deleted: true };
@@ -722,7 +841,11 @@ export const useTravelerStore = create((set, get) => {
           const partnerStore = usePartnerStore.getState();
           const partnerId = group.partner_id;
           if (partnerStore.selectedPartner?.id === partnerId) {
-            partnerStore.setGroups([...get().groups]);
+            // Filtramos los grupos para incluir solo los del partner seleccionado
+            const partnerGroups = get().groups.filter(
+              (g) => g.partner_id === partnerId
+            );
+            partnerStore.setGroups(partnerGroups);
           }
 
           return { groupId, newGroupSize: newSize };
