@@ -12,8 +12,8 @@ import { CreatePartnerDialog } from "@/components/partner/create-partner-dialog"
 import { DeletePartnerDialog } from "@/components/partner/delete-partner-dialog";
 
 // Import Zustand stores
-import { usePartnerStore } from "@/store/partnerStore";
-import { useTravelers, useTravelerStore } from "@/store/travelerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
+import { useTravelerStore } from "@/store/travelerStore";
 import { useDateStore } from "@/store/date-store";
 import { useAuthStore } from "@/store/authStore";
 import { useHostelAssignmentStore } from "@/store/hostelAssignmentStore";
@@ -37,13 +37,13 @@ export function PartnerSelector() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   // Store access for our main component logic
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
-  const clearPartnerStoreData = usePartnerStore(
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
+  const clearPartnerStoreData = useTravelerStore(
     (state) => state.clearStoreData
   );
   const selectedDate = useDateStore((state) => state.selectedDate);
   const setSelectedDate = useDateStore((state) => state.setSelectedDate);
-  const { refetchPartners } = useTravelers();
+  const { refetchPartners } = useTravelerStore();
   const clearHostelCache = useHostelAssignmentStore(
     (state) => state.clearCache
   );
@@ -74,7 +74,7 @@ export function PartnerSelector() {
         );
         if (updatedPartner) {
           // Re-select the partner with updated data to refresh groups and individuals
-          usePartnerStore.getState().setSelectedPartner(updatedPartner);
+          useTravelerStore.getState().setSelectedPartner(updatedPartner);
 
           // Explicitly refresh groups and individuals for this partner
           const filteredIndividuals = useTravelerStore
@@ -89,8 +89,8 @@ export function PartnerSelector() {
             .getState()
             .groups.filter((grp) => grp.partner_id === updatedPartner.id);
 
-          usePartnerStore.getState().setGroups(filteredGroups);
-          usePartnerStore.getState().setIndividuals(filteredIndividuals);
+          useTravelerStore.getState().setGroups(filteredGroups);
+          useTravelerStore.getState().setIndividuals(filteredIndividuals);
         }
       }
     } catch (error) {

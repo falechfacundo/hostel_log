@@ -1,11 +1,12 @@
 import { Calendar, Users, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
+import { useTravelerStore } from "@/store/travelerStore";
 
 export function PartnerInfo() {
   // Get partner directly from store
-  const partner = usePartnerStore((state) => state.selectedPartner);
+  const partner = useTravelerStore((state) => state.selectedPartner);
 
   if (!partner) return null;
 

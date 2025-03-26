@@ -34,17 +34,17 @@ export async function fetchPartnersByDate(dateStr) {
       const partnersWithData = await Promise.all(
         partners.map(async (partner) => {
           const [groups, individuals, hostelAssignments] = await Promise.all([
-            // Fetch groups
+            // Fetch groups with their members
             dbSelect(supabase, "groups", {
               columns: `*, person(*)`,
               filters: { partner_id: partner.id },
             }),
 
-            // Fetch individuals
+            // Fetch individuals (people WITHOUT a group)
             dbSelect(supabase, "person", {
               filters: {
                 partner_id: partner.id,
-                group_id: null,
+                group_id: { operator: "is", value: null },
               },
               order: { column: "name" },
             }),
@@ -55,23 +55,25 @@ export async function fetchPartnersByDate(dateStr) {
               filters: { partner_id: partner.id },
             }),
           ]);
+          console.log("individuals", individuals);
 
           // Format groups to match expected structure
+          // Note: Group members are already included in the group.person property
           const formattedGroups = groups.map((group) => ({
             ...group,
-            people: group.person || [],
+            people: group.person || [], // Rename 'person' to 'people' for consistency
           }));
 
           return {
             ...partner,
             groups: formattedGroups,
-            individuals: individuals || [],
+            individuals: individuals || [], // These are ONLY people without a group
             hostelAssignments: hostelAssignments || [],
           };
         })
       );
 
-      // Collect all groups and individuals for convenience
+      // Collect all groups and standalone individuals for convenience
       const allGroups = partnersWithData.flatMap((p) => p.groups || []);
       const allIndividuals = partnersWithData.flatMap(
         (p) => p.individuals || []
@@ -80,7 +82,7 @@ export async function fetchPartnersByDate(dateStr) {
       return {
         partners: partnersWithData,
         groups: allGroups,
-        individuals: allIndividuals,
+        individuals: allIndividuals, // These are ONLY people without a group
         status: 200,
       };
     } catch (error) {
@@ -94,15 +96,15 @@ export async function fetchPartnersByDate(dateStr) {
  * Create a new partner
  */
 export async function createPartner(partnerData) {
-  return withAuth(async (supabase, partnerData) => {
+  return withServerDb(async (supabase, partnerData) => {
     try {
       const newPartner = await dbInsert(supabase, "partners", partnerData);
 
       // Add empty arrays for client-side use
       return {
         ...newPartner,
-        groups: [],
-        individuals: [],
+        groups: [], // Groups will be empty for a new partner
+        individuals: [], // Standalone people without groups will be empty for a new partner
         hostelAssignments: [],
         status: 200,
       };
@@ -117,7 +119,7 @@ export async function createPartner(partnerData) {
  * Delete a partner
  */
 export async function deletePartner(partnerId) {
-  return withAuth(async (supabase, partnerId) => {
+  return withServerDb(async (supabase, partnerId) => {
     try {
       await dbDelete(supabase, "partners", { id: partnerId });
 

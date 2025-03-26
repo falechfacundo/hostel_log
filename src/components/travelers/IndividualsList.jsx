@@ -1,5 +1,5 @@
 import { useTravelerStore } from "@/store/travelerStore";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 
 import { BackpackToggle } from "@/components/ui/backpack-toggle";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +19,7 @@ export function IndividualsList({
   const deleteIndividual = useTravelerStore((state) => state.deleteIndividual);
 
   // Get individuals from the store if not provided via props (backwards compatibility)
-  const storeIndividuals = usePartnerStore((state) => state.individuals);
+  const storeIndividuals = useTravelerStore((state) => state.individuals);
   const effectiveIndividuals =
     individuals.length > 0 ? individuals : storeIndividuals;
 

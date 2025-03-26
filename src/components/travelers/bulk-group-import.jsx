@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Replace useTravelers with useTravelerStore
 import { useTravelerStore } from "@/store/travelerStore";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 
 export function BulkGroupImport() {
   // State for groups
@@ -32,10 +32,12 @@ export function BulkGroupImport() {
   const [isImporting, setIsImporting] = useState(false);
 
   // Get the necessary functions from the store
+  const totalPersons = useTravelerStore((state) => state.totalPersons);
+  const maxPersons = useTravelerStore((state) => state.maxPersons);
   const createGroup = useTravelerStore((state) => state.createGroup);
   const createIndividual = useTravelerStore((state) => state.createIndividual);
   // Get the selected partner from the partner store
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
 
   const parseGroups = (text) => {
     // Dividir por líneas y limpiar espacios
@@ -135,10 +137,10 @@ export function BulkGroupImport() {
         (i) => i.partner_id === selectedPartner.id
       );
 
-      // Actualizamos el partnerStore con los datos filtrados
-      const partnerStore = usePartnerStore.getState();
-      partnerStore.setGroups(partnerGroups);
-      partnerStore.setIndividuals(partnerIndividuals);
+      // // Actualizamos el partnerStore con los datos filtrados
+      // const traveStore = useTravelerStore.getState();
+      // partnerStore.setGroups(partnerGroups);
+      // partnerStore.setIndividuals(partnerIndividuals);
 
       // Reset state
       setGroupText("");
@@ -168,7 +170,12 @@ export function BulkGroupImport() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-fuchsia-pink-500 hover:bg-fuchsia-pink-600 gap-2">
+        <Button
+          className="bg-fuchsia-pink-500 hover:bg-fuchsia-pink-600 gap-2"
+          disabled={
+            totalPersons == maxPersons - 1 || totalPersons == maxPersons
+          }
+        >
           <Upload className="h-4 w-4" />
           Importar desde Texto
         </Button>

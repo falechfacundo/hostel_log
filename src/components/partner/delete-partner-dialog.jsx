@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Trash2, Loader2 } from "lucide-react";
 import { useTravelerStore } from "@/store/travelerStore";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 
 export function DeletePartnerDialog({
@@ -26,12 +26,12 @@ export function DeletePartnerDialog({
     (state) => state.fetchPartnersByDate
   );
   const partners = useTravelerStore((state) => state.partners);
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
-  const setSelectedPartner = usePartnerStore(
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
+  const setSelectedPartner = useTravelerStore(
     (state) => state.setSelectedPartner
   );
-  const setGroups = usePartnerStore((state) => state.setGroups);
-  const setIndividuals = usePartnerStore((state) => state.setIndividuals);
+  const setGroups = useTravelerStore((state) => state.setGroups);
+  const setIndividuals = useTravelerStore((state) => state.setIndividuals);
   const selectedDate = useDateStore((state) => state.selectedDate);
 
   const handleOpenChange = (open) => {

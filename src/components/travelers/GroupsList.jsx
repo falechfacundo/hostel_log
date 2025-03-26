@@ -1,9 +1,10 @@
 import { useTravelerStore } from "@/store/travelerStore";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 
 import { BackpackToggle } from "@/components/ui/backpack-toggle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Pencil, Trash2, Users, UserPlus, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -17,15 +18,17 @@ export function GroupsList({
   onUpdatePerson,
 }) {
   // Get functions and state directly from the store
+  const totalPersons = useTravelerStore((state) => state.totalPersons);
+  const maxPersons = useTravelerStore((state) => state.maxPersons);
   const updatePerson = useTravelerStore((state) => state.updatePerson);
   const deleteGroup = useTravelerStore((state) => state.deleteGroup);
   const addPersonToGroup = useTravelerStore((state) => state.addPersonToGroup);
   const removePersonFromGroup = useTravelerStore(
     (state) => state.removePersonFromGroup
   );
-  const storeGroups = usePartnerStore((state) => state.groups);
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
-  const storeIndividuals = usePartnerStore((state) => state.individuals);
+  const storeGroups = useTravelerStore((state) => state.groups);
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
+  const storeIndividuals = useTravelerStore((state) => state.individuals);
 
   // Estado para seguir qué elementos están siendo eliminados
   const [deletingMembers, setDeletingMembers] = useState({});
@@ -99,31 +102,6 @@ export function GroupsList({
 
   // Function to add member to group with complete data
   const handleAddMember = (groupId, personData) => {
-    const group = effectiveGroups.find((g) => g.id === groupId);
-    if (!group) return;
-
-    // Count all people across all groups belonging to this partner
-    const totalPeopleInGroups = effectiveGroups.reduce(
-      (total, g) => total + (g.people?.length || 0),
-      0
-    );
-
-    // Count all individuals belonging to this partner
-    const totalIndividuals = storeIndividuals ? storeIndividuals.length : 0;
-
-    // Total people count (groups + individuals)
-    const totalPeopleWithPartner = totalPeopleInGroups + totalIndividuals;
-
-    const partnerSizeLimit = selectedPartner?.size || 0;
-
-    // Check if adding another person would exceed the partner's total capacity
-    if (partnerSizeLimit > 0 && totalPeopleWithPartner >= partnerSizeLimit) {
-      alert(
-        `No se pueden agregar más personas. El socio ya tiene ${totalPeopleWithPartner} personas asignadas de un límite de ${partnerSizeLimit}.`
-      );
-      return;
-    }
-
     effectiveAddMember(groupId, personData);
   };
 
@@ -179,19 +157,21 @@ export function GroupsList({
                   input.value = "";
                 }}
               >
-                <input
+                <Input
                   name="name"
                   type="text"
                   placeholder="Nombre del miembro..."
                   className="flex-1 px-3 py-2 border rounded-md"
+                  disabled={totalPersons == maxPersons}
                   required
                 />
-                <button
+                <Button
                   type="submit"
                   className="px-3 py-2 bg-blue-500 text-white rounded-md"
+                  disabled={totalPersons == maxPersons}
                 >
                   Agregar
-                </button>
+                </Button>
               </form>
 
               {/* Lista de miembros con toggle de mochila */}

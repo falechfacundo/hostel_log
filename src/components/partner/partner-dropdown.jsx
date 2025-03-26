@@ -5,7 +5,7 @@ import { ChevronDown, Trash2, Loader2 } from "lucide-react";
 
 // Import stores directly
 import { useAuthStore } from "@/store/authStore";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 import { useTravelerStore } from "@/store/travelerStore";
 
 export function PartnerDropdown({
@@ -16,12 +16,12 @@ export function PartnerDropdown({
   // Get data directly from stores
   const partners = useTravelerStore((state) => state.partners);
   const isLoadingPartners = useTravelerStore((state) => state.isLoading);
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
-  const setSelectedPartner = usePartnerStore(
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
+  const setSelectedPartner = useTravelerStore(
     (state) => state.setSelectedPartner
   );
-  const setGroups = usePartnerStore((state) => state.setGroups);
-  const setIndividuals = usePartnerStore((state) => state.setIndividuals);
+  const setGroups = useTravelerStore((state) => state.setGroups);
+  const setIndividuals = useTravelerStore((state) => state.setIndividuals);
   const userProfile = useAuthStore((state) => state.userProfile);
 
   // Check if component is disabled based on loading states

@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 // Import stores directly
 import { useTravelerStore } from "@/store/travelerStore";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 import { format } from "date-fns";
 
@@ -30,18 +30,18 @@ export function CreatePartnerDialog({
   const fetchPartnersByDate = useTravelerStore(
     (state) => state.fetchPartnersByDate
   );
-  const setSelectedPartner = usePartnerStore(
+  const setSelectedPartner = useTravelerStore(
     (state) => state.setSelectedPartner
   );
-  const setGroups = usePartnerStore((state) => state.setGroups);
-  const setIndividuals = usePartnerStore((state) => state.setIndividuals);
+  const setGroups = useTravelerStore((state) => state.setGroups);
+  const setIndividuals = useTravelerStore((state) => state.setIndividuals);
   const selectedDate = useDateStore((state) => state.selectedDate);
 
   const [newPartner, setNewPartner] = useState({
     name: "",
-    size: "0",
+    size: "2",
     days: "5",
-    startDate: new Date(),
+    startDate: selectedDate,
   });
 
   const handleStartDateChange = (e) => {
@@ -68,33 +68,17 @@ export function CreatePartnerDialog({
     try {
       setCreating(true);
 
-      const { name, size, days, startDate } = newPartner;
-      const startDateObj = startDate || new Date();
-      const formattedStartDate = format(startDateObj, "yyyy-MM-dd");
-
-      // Calculate end date by adding days to start date
-      const daysCount = parseInt(days) || 5;
-
-      // Create the new partner using the store method
-      const newPartnerData = await createPartner({
-        name,
-        size: parseInt(size) || 0,
-        days: daysCount,
-        startDate: startDateObj,
+      await createPartner({
+        name: newPartner.name,
+        size: newPartner.size,
+        days: newPartner.days,
+        startDate: newPartner.startDate,
       });
-
-      // Refresh partners for the current date
-      await fetchPartnersByDate(selectedDate);
-
-      // Automatically select the new partner
-      setSelectedPartner(newPartnerData);
-      setGroups(newPartnerData.groups || []);
-      setIndividuals(newPartnerData.individuals || []);
 
       // Reset form
       setNewPartner({
         name: "",
-        size: "0",
+        size: "2",
         days: "5",
         startDate: new Date(),
       });
@@ -135,7 +119,7 @@ export function CreatePartnerDialog({
               <Input
                 id="partnerSize"
                 type="number"
-                min="0"
+                min="2"
                 value={newPartner.size}
                 onChange={(e) =>
                   setNewPartner({ ...newPartner, size: e.target.value })

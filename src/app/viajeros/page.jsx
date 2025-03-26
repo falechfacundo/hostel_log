@@ -15,7 +15,7 @@ import {
 
 // Import the Zustand stores
 import { useTravelerStore } from "@/store/travelerStore";
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 
 // Import components
@@ -34,9 +34,11 @@ export default function Viajeros() {
 
   // Use individual selectors to avoid reference equality issues
   // Get state from partnerStore
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
-  const storeGroups = usePartnerStore((state) => state.groups);
-  const storeIndividuals = usePartnerStore((state) => state.individuals);
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
+  const groups = useTravelerStore((state) => state.groups);
+  const individuals = useTravelerStore((state) => state.individuals);
+  const totalPersons = useTravelerStore((state) => state.totalPersons);
+  const maxPersons = useTravelerStore((state) => state.maxPersons);
 
   // Get state from dateStore
   const selectedDate = useDateStore((state) => state.selectedDate);
@@ -67,7 +69,6 @@ export default function Viajeros() {
 
         // Close dialog after successful creation
         setOpenDialog((prev) => ({ ...prev, group: false }));
-        toast.success("Grupo creado exitosamente");
       } catch (error) {
         toast.error(`Error al crear grupo: ${error.message}`);
       }
@@ -88,7 +89,6 @@ export default function Viajeros() {
 
         // Close dialog after successful creation
         setOpenDialog((prev) => ({ ...prev, individual: false }));
-        toast.success("Persona creada exitosamente");
       } catch (error) {
         toast.error(`Error al crear persona: ${error.message}`);
       }
@@ -105,7 +105,7 @@ export default function Viajeros() {
 
   const handleAddMember = useCallback(
     (groupId, personData) => {
-      const group = storeGroups.find((g) => g.id === groupId);
+      const group = groups.find((g) => g.id === groupId);
       if (!group) {
         toast.error("Grupo no encontrado");
         return;
@@ -119,7 +119,7 @@ export default function Viajeros() {
         },
       });
     },
-    [addPersonToGroup, storeGroups, selectedPartner?.id]
+    [addPersonToGroup, groups, selectedPartner?.id]
   );
 
   const handleRemoveIndividual = useCallback(
@@ -168,6 +168,10 @@ export default function Viajeros() {
                     <Button
                       variant="outline"
                       className="flex items-center gap-2"
+                      disabled={
+                        totalPersons == maxPersons - 1 ||
+                        totalPersons == maxPersons
+                      }
                     >
                       <Plus className="h-4 w-4" />
                       <Users className="h-4 w-4" />
@@ -200,6 +204,7 @@ export default function Viajeros() {
                     <Button
                       variant="outline"
                       className="flex items-center gap-2"
+                      disabled={totalPersons == maxPersons}
                     >
                       <Plus className="h-4 w-4" />
                       <User className="h-4 w-4" />
@@ -228,7 +233,7 @@ export default function Viajeros() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <IndividualsList
-                individuals={storeIndividuals}
+                individuals={individuals}
                 isLoading={isLoading}
                 onRemoveIndividual={handleRemoveIndividual}
               />
@@ -236,7 +241,7 @@ export default function Viajeros() {
 
             <div className="md:col-span-2">
               <GroupsList
-                groups={storeGroups}
+                groups={groups}
                 isLoading={isLoading}
                 onDeleteGroup={handleDeleteGroup}
                 onAddMember={handleAddMember}
