@@ -1,7 +1,6 @@
 import { Calendar, Users, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-// import { usePartnerStore } from "@/store/partnerStore";
 import { useTravelerStore } from "@/store/travelerStore";
 
 export function PartnerInfo() {

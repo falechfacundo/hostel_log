@@ -12,8 +12,6 @@ import { CreatePartnerDialog } from "@/components/partner/create-partner-dialog"
 import { DeletePartnerDialog } from "@/components/partner/delete-partner-dialog";
 import { EditPartnerDialog } from "@/components/partner/edit-partner-dialog";
 
-// Import Zustand stores
-// import { usePartnerStore } from "@/store/partnerStore";
 import { useTravelerStore } from "@/store/travelerStore";
 import { useDateStore } from "@/store/date-store";
 import { useAuthStore } from "@/store/authStore";

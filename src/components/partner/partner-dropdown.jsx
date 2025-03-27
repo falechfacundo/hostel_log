@@ -5,7 +5,6 @@ import { ChevronDown, Trash2, Loader2, Pencil } from "lucide-react";
 
 // Import stores directly
 import { useAuthStore } from "@/store/authStore";
-// import { usePartnerStore } from "@/store/partnerStore";
 import { useTravelerStore } from "@/store/travelerStore";
 
 export function PartnerDropdown({

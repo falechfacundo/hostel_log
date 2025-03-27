@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Trash2, Loader2 } from "lucide-react";
 import { useTravelerStore } from "@/store/travelerStore";
-// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 
 export function DeletePartnerDialog({

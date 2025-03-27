@@ -1,5 +1,4 @@
 import { useTravelerStore } from "@/store/travelerStore";
-// import { usePartnerStore } from "@/store/partnerStore";
 
 import { BackpackToggle } from "@/components/ui/backpack-toggle";
 import { Card, CardContent } from "@/components/ui/card";

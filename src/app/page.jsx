@@ -19,8 +19,6 @@ import {
 } from "@dnd-kit/core";
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
 
-// Replace TanStack Query imports with Zustand stores
-// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 import { useTravelerStore } from "@/store/travelerStore";
 import { useHostelStore } from "@/store/hostelStore";
