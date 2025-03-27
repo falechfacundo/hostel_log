@@ -34,7 +34,7 @@ export async function fetchHostels() {
  * Add a new hostel
  */
 export async function addHostel(hostelData) {
-  return withAuth(async (supabase, hostelData) => {
+  return withServerDb(async (supabase, hostelData) => {
     try {
       const newHostel = await dbInsert(supabase, "hostels", hostelData);
 
@@ -56,8 +56,8 @@ export async function addHostel(hostelData) {
  * Update a hostel
  */
 export async function updateHostel(id, data) {
-  return withAuth(
-    async (supabase, id, data) => {
+  return withServerDb(
+    async (supabase, { id, data }) => {
       try {
         const updatedHostel = await dbUpdate(
           supabase,
@@ -76,8 +76,7 @@ export async function updateHostel(id, data) {
         throw error;
       }
     },
-    id,
-    data
+    { id, data }
   );
 }
 
@@ -85,7 +84,7 @@ export async function updateHostel(id, data) {
  * Delete a hostel
  */
 export async function deleteHostel(id) {
-  return withAuth(async (supabase, id) => {
+  return withServerDb(async (supabase, id) => {
     try {
       await dbDelete(supabase, "hostels", { id });
 

@@ -15,9 +15,7 @@ import { Upload, Users, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Replace useTravelers with useTravelerStore
 import { useTravelerStore } from "@/store/travelerStore";
-// import { usePartnerStore } from "@/store/partnerStore";
 
 export function BulkGroupImport() {
   // State for groups
@@ -148,18 +146,6 @@ export function BulkGroupImport() {
       setGroupPreview([]);
       setIndividualPreview([]);
       setIsOpen(false);
-
-      // Show success message with appropriate counts
-      let successMessage = "";
-      if (importedGroupCount > 0 && importedIndividualCount > 0) {
-        successMessage = `Importados ${importedGroupCount} grupos y ${importedIndividualCount} personas individuales con éxito`;
-      } else if (importedGroupCount > 0) {
-        successMessage = `Importados ${importedGroupCount} grupos con éxito`;
-      } else if (importedIndividualCount > 0) {
-        successMessage = `Importadas ${importedIndividualCount} personas individuales con éxito`;
-      }
-
-      toast.success(successMessage);
     } catch (error) {
       toast.error(`Error al importar datos: ${error.message}`);
     } finally {
@@ -317,7 +303,6 @@ export function BulkGroupImport() {
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            {console.log(groupPreview.some((group) => group.length === 1))}
             <Button
               onClick={processImport}
               disabled={

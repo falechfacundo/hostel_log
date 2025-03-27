@@ -139,32 +139,41 @@ export async function deletePartner(partnerId) {
  * Updates an existing partner record
  */
 export async function updatePartner(id, partnerData) {
-  try {
-    // Validate required fields
-    if (!id) {
-      return { error: "Partner ID is required" };
-    }
+  return withServerDb(
+    async (supabase, { id, partnerData }) => {
+      try {
+        // Validate required fields
+        if (!id) {
+          return { error: "Partner ID is required", status: 400 };
+        }
 
-    if (!partnerData.name) {
-      return { error: "Partner name is required" };
-    }
+        if (!partnerData.name) {
+          return { error: "Partner name is required", status: 400 };
+        }
 
-    // Update the partner record
-    const { data, error } = await supabase
-      .from("partners")
-      .update(partnerData)
-      .eq("id", id)
-      .select()
-      .single();
+        // Update the partner record
+        const { data, error } = await supabase
+          .from("partners")
+          .update(partnerData)
+          .eq("id", id)
+          .select()
+          .single();
 
-    if (error) {
-      console.error("Error updating partner:", error);
-      return { error: error.message };
-    }
+        if (error) {
+          console.error("Error updating partner:", error);
+          throw error;
+        }
 
-    return data;
-  } catch (error) {
-    console.error("Unexpected error updating partner:", error);
-    return { error: error.message || "Failed to update partner" };
-  }
+        return {
+          ...data,
+          success: true,
+          status: 200,
+        };
+      } catch (error) {
+        console.error("Error in updatePartner server action:", error);
+        throw error;
+      }
+    },
+    { id, partnerData }
+  );
 }

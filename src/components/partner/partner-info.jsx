@@ -7,6 +7,7 @@ import { useTravelerStore } from "@/store/travelerStore";
 export function PartnerInfo() {
   // Get partner directly from store
   const partner = useTravelerStore((state) => state.selectedPartner);
+  const totalPersons = useTravelerStore((state) => state.totalPersons);
 
   if (!partner) return null;
 
@@ -27,7 +28,9 @@ export function PartnerInfo() {
     <div className="flex items-center gap-6 text-sm text-gray-600 ">
       <div className="flex items-center gap-1">
         <Users className="h-4 w-4" />
-        <span>{partner.size || 0}</span>
+        <span>
+          {totalPersons}/{partner.size || 0}
+        </span>
       </div>
       <div className="flex items-center gap-1">
         <Clock className="h-4 w-4" />

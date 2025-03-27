@@ -13,9 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Loader2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
-// Import stores directly
 import { useTravelerStore } from "@/store/travelerStore";
-// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 import { format } from "date-fns";
 

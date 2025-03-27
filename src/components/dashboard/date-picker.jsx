@@ -30,6 +30,7 @@ export function DatePicker({ date, onChange, isLoading, className }) {
 
     // Validar que sea una fecha válida antes de propagar el cambio
     const newDate = new Date(newValue + "T00:00:00");
+
     if (!isNaN(newDate.getTime())) {
       onChange({ target: { value: newValue } });
     }
@@ -42,7 +43,6 @@ export function DatePicker({ date, onChange, isLoading, className }) {
       </div>
       <div className="flex items-center">
         <div className="relative border focus-within:ring-1 focus-within:ring-primary shadow-sm border-none">
-          {/* Mostramos la fecha en formato español */}
           <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10 bg-white px-2 py-1">
             {spanishFormattedDate}
           </div>

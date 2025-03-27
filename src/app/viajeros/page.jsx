@@ -13,9 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// Import the Zustand stores
 import { useTravelerStore } from "@/store/travelerStore";
-// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 
 // Import components
@@ -155,7 +153,6 @@ export default function Viajeros() {
             <h1 className="text-4xl font-bold text-primary">
               Gestión de Viajeros
             </h1>
-
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Dialog

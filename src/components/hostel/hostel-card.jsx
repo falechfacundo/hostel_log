@@ -3,6 +3,8 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 // Replace TanStack Query hooks with Zustand stores
 import { useHostelStore } from "@/store/hostelStore";
@@ -11,6 +13,7 @@ import { useRoomStore } from "@/store/roomStore";
 import { RoomList } from "@/components/hostel/room-list";
 import { AddRoomForm } from "@/components/hostel/add-room-form";
 import { HostelHeader } from "@/components/hostel/hostel-header";
+import { EditHostelForm } from "@/components/hostel/edit-hostel-form";
 import { useEffect } from "react";
 
 export function HostelCard({
@@ -20,11 +23,14 @@ export function HostelCard({
   date,
   assignments = [],
 }) {
-  const { deleteHostel } = useHostelStore();
+  const deleteHostel = useHostelStore((state) => state.deleteHostel);
+  const updateHostel = useHostelStore((state) => state.updateHostel);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Use the Zustand roomStore instead of the TanStack Query hook
-  const { getRoomsByHostel, fetchRoomsByHostel, addRoom, deleteRoom } =
-    useRoomStore();
+  const getRoomsByHostel = useRoomStore((state) => state.getRoomsByHostel);
+  const fetchRoomsByHostel = useRoomStore((state) => state.fetchRoomsByHostel);
+  const addRoom = useRoomStore((state) => state.addRoom);
+  const deleteRoom = useRoomStore((state) => state.deleteRoom);
 
   // Fetch rooms when component mounts
   useEffect(() => {
@@ -43,9 +49,35 @@ export function HostelCard({
   );
   const remainingCapacity = hostel.capacity - usedCapacity;
 
+  const handleUpdateHostel = () => {
+    setIsEditing(true);
+  };
+
+  const handleSaveHostelUpdate = async (data) => {
+    try {
+      await updateHostel(hostel.id, data);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating hostel:", error);
+      toast.error("Error al actualizar el albergue");
+    }
+  };
+
   return (
     <Card className="p-6">
-      <HostelHeader hostel={hostel} onDelete={deleteHostel} />
+      {isEditing ? (
+        <EditHostelForm
+          hostel={hostel}
+          onSave={handleSaveHostelUpdate}
+          onCancel={() => setIsEditing(false)}
+        />
+      ) : (
+        <HostelHeader
+          hostel={hostel}
+          onDelete={deleteHostel}
+          onUpdate={handleUpdateHostel}
+        />
+      )}
 
       <div className="flex flex-col justify-between">
         <div className="justify-start space-y-2">
