@@ -134,3 +134,37 @@ export async function deletePartner(partnerId) {
     }
   }, partnerId);
 }
+
+/**
+ * Updates an existing partner record
+ */
+export async function updatePartner(id, partnerData) {
+  try {
+    // Validate required fields
+    if (!id) {
+      return { error: "Partner ID is required" };
+    }
+
+    if (!partnerData.name) {
+      return { error: "Partner name is required" };
+    }
+
+    // Update the partner record
+    const { data, error } = await supabase
+      .from("partners")
+      .update(partnerData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating partner:", error);
+      return { error: error.message };
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Unexpected error updating partner:", error);
+    return { error: error.message || "Failed to update partner" };
+  }
+}

@@ -10,6 +10,7 @@ import { PartnerDropdown } from "@/components/partner/partner-dropdown";
 import { PartnerInfo } from "@/components/partner/partner-info";
 import { CreatePartnerDialog } from "@/components/partner/create-partner-dialog";
 import { DeletePartnerDialog } from "@/components/partner/delete-partner-dialog";
+import { EditPartnerDialog } from "@/components/partner/edit-partner-dialog";
 
 // Import Zustand stores
 // import { usePartnerStore } from "@/store/partnerStore";
@@ -25,12 +26,15 @@ let lastLoggedPartnerId = null;
 export function PartnerSelector() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // States that still need to be managed at this level
   const [isCreatingPartner, setIsCreatingPartner] = useState(false);
   const [isDeletingPartner, setIsDeletingPartner] = useState(false);
+  const [isEditingPartner, setIsEditingPartner] = useState(false);
   const [partnerToDelete, setPartnerToDelete] = useState(null);
+  const [partnerToEdit, setPartnerToEdit] = useState(null);
 
   // Access user data from auth store
   const userProfile = useAuthStore((state) => state.userProfile);
@@ -141,6 +145,12 @@ export function PartnerSelector() {
     setDeleteDialogOpen(true);
   }, []);
 
+  // Handle opening edit dialog
+  const handleOpenEditDialog = useCallback((partner) => {
+    setPartnerToEdit(partner);
+    setEditDialogOpen(true);
+  }, []);
+
   if (!isAuthenticated) {
     return null;
   }
@@ -148,11 +158,14 @@ export function PartnerSelector() {
   return (
     <div className="flex items-center justify-between py-2 px-4 bg-white border-b">
       <div className="flex items-center gap-4">
-        {/* Partners dropdown - No props needed now */}
+        {/* Partners dropdown - Pass edit function */}
         <PartnerDropdown
           onDeletePartner={handleOpenDeleteDialog}
+          onEditPartner={handleOpenEditDialog}
           isDeleting={isDeletingPartner}
+          isEditing={isEditingPartner}
           partnerToDelete={partnerToDelete}
+          partnerToEdit={partnerToEdit}
         />
 
         {/* Create new partner button */}
@@ -162,7 +175,9 @@ export function PartnerSelector() {
             variant="ghost"
             size="sm"
             className="ml-2"
-            disabled={isCreatingPartner || isDeletingPartner}
+            disabled={
+              isCreatingPartner || isDeletingPartner || isEditingPartner
+            }
           >
             <Plus className="h-4 w-4 mr-1" />
           </Button>
@@ -204,6 +219,14 @@ export function PartnerSelector() {
             deleting={isDeletingPartner}
             setDeleting={setIsDeletingPartner}
             setPartnerToDelete={setPartnerToDelete}
+          />
+
+          <EditPartnerDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            partner={partnerToEdit}
+            editing={isEditingPartner}
+            setEditing={setIsEditingPartner}
           />
         </>
       )}

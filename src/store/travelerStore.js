@@ -10,6 +10,7 @@ import {
   fetchPartnersByDate as fetchPartnersByDateAction,
   createPartner as createPartnerAction,
   deletePartner as deletePartnerAction,
+  updatePartner as updatePartnerAction,
 } from "@/actions/partner-actions";
 
 export const useTravelerStore = create(
@@ -1234,6 +1235,71 @@ export const useTravelerStore = create(
             console.error("Error deleting partner:", error);
             set({ error: error.message, isLoading: false });
             toast.error(`Error al eliminar partner: ${error.message}`);
+            throw error;
+          }
+        },
+
+        updatePartner: async (id, partnerData) => {
+          try {
+            set({ isLoading: true, error: null });
+
+            // Extract and format data
+            const { name, size, days, startDate, endDate } = partnerData;
+
+            // Format dates if they exist
+            let formattedData = { name, size: parseInt(size) || 2 };
+
+            if (startDate) {
+              const startDateObj = new Date(startDate);
+              formattedData.start_date = format(startDateObj, "yyyy-MM-dd");
+
+              // If days are provided, calculate new end date
+              if (days) {
+                const daysCount = parseInt(days) || 5;
+                formattedData.days = daysCount;
+                const endDateObj = addDays(startDateObj, daysCount);
+                formattedData.end_date = format(endDateObj, "yyyy-MM-dd");
+              }
+            } else if (endDate) {
+              // If only end date is provided
+              formattedData.end_date = format(new Date(endDate), "yyyy-MM-dd");
+            }
+
+            // Call server action
+            const result = await updatePartnerAction(id, formattedData);
+
+            // Handle errors from server action
+            if (result.error) {
+              throw new Error(result.error);
+            }
+
+            // Get the updated partner from the result
+            const updatedPartner = result;
+
+            // Update state
+            set((state) => ({
+              partners: state.partners.map((p) =>
+                p.id === id ? { ...p, ...updatedPartner } : p
+              ),
+              isLoading: false,
+            }));
+
+            // If this was the selected partner, update it
+            if (get().selectedPartner?.id === id) {
+              get().setSelectedPartner(updatedPartner);
+            }
+
+            // Refresh partners for the current date
+            const selectedDate = useDateStore.getState().selectedDate;
+            if (selectedDate) {
+              await get().fetchPartnersByDate(selectedDate);
+            }
+
+            return updatedPartner;
+          } catch (error) {
+            console.error("Error updating partner:", error);
+            set({ error: error.message, isLoading: false });
+            toast.error(`Error al actualizar partner: ${error.message}`);
             throw error;
           }
         },

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { ChevronDown, Trash2, Loader2 } from "lucide-react";
+import { ChevronDown, Trash2, Loader2, Pencil } from "lucide-react";
 
 // Import stores directly
 import { useAuthStore } from "@/store/authStore";
@@ -12,6 +12,7 @@ export function PartnerDropdown({
   onDeletePartner,
   isDeleting,
   partnerToDelete,
+  onEditPartner,
 }) {
   // Get data directly from stores
   const partners = useTravelerStore((state) => state.partners);
@@ -99,22 +100,35 @@ export function PartnerDropdown({
 
       {/* Botón para eliminar el partner seleccionado */}
       {selectedPartner && userProfile?.role === "admin" && (
-        <Tooltip content="Eliminar partner">
+        <>
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onDeletePartner(selectedPartner)}
-            className="h-9 w-9 text-red-500 hover:text-red-700 hover:bg-red-50"
-            title="Eliminar partner"
-            disabled={disabled}
+            className="h-6 w-6"
+            onClick={() => {
+              onEditPartner(selectedPartner);
+            }}
+            disabled={isDeleting}
           >
-            {isDeleting && partnerToDelete?.id === selectedPartner.id ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
+            <Pencil className="h-3 w-3" />
           </Button>
-        </Tooltip>
+          <Tooltip content="Eliminar partner">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDeletePartner(selectedPartner)}
+              className="h-9 w-9 text-red-500 hover:text-red-700 hover:bg-red-50"
+              title="Eliminar partner"
+              disabled={disabled}
+            >
+              {isDeleting && partnerToDelete?.id === selectedPartner.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          </Tooltip>
+        </>
       )}
     </div>
   );

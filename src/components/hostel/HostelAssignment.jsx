@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Loader2, Check, X } from "lucide-react";
 
 // Import Zustand stores
-import { usePartnerStore } from "@/store/partnerStore";
+import { useTravelerStore } from "@/store/travelerStore";
 import { useDateStore } from "@/store/date-store";
 import { useHostelStore } from "@/store/hostelStore";
 import { useHostelAssignmentStore } from "@/store/hostelAssignmentStore";
@@ -28,7 +28,7 @@ export function HostelAssignment() {
   const [isRemovingAssignment, setIsRemovingAssignment] = useState({});
 
   // Get partner data via single selector to avoid re-renders
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
 
   // Get date in formatted string form for consistent dependency tracking
   const selectedDate = useDateStore((state) => state.selectedDate);

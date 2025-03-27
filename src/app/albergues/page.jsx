@@ -1,21 +1,24 @@
 "use client";
 
-import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useState, useEffect } from "react";
-import { useDateStore } from "@/store/date-store";
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Building, Info } from "lucide-react";
-import { useHostelStore } from "@/store/hostelStore";
-import { HostelCard } from "@/components/hostel/hostel-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Plus, Building, Info } from "lucide-react";
+
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { HostelCard } from "@/components/hostel/hostel-card";
 import { HostelAssignment } from "@/components/hostel/HostelAssignment";
-import { usePartnerStore } from "@/store/partnerStore";
+
+import { useDateStore } from "@/store/date-store";
+import { useHostelStore } from "@/store/hostelStore";
+import { useTravelerStore } from "@/store/travelerStore";
 
 export default function Albergues() {
   const [activeHostelId, setActiveHostelId] = useState(null);
   const selectedDate = useDateStore((state) => state.selectedDate);
-  const selectedPartner = usePartnerStore((state) => state.selectedPartner);
+  const selectedPartner = useTravelerStore((state) => state.selectedPartner);
 
   const isLoading = useHostelStore((state) => state.isLoading);
   const hostels = useHostelStore((state) => state.hostels);

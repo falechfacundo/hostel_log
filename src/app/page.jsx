@@ -20,7 +20,7 @@ import {
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
 
 // Replace TanStack Query imports with Zustand stores
-import { usePartnerStore } from "@/store/partnerStore";
+// import { usePartnerStore } from "@/store/partnerStore";
 import { useDateStore } from "@/store/date-store";
 import { useTravelerStore } from "@/store/travelerStore";
 import { useHostelStore } from "@/store/hostelStore";
@@ -46,7 +46,7 @@ export default function Dashboard() {
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  const { selectedPartner, groups, individuals } = usePartnerStore();
+  const { selectedPartner, groups, individuals } = useTravelerStore();
 
   const {
     hostels,

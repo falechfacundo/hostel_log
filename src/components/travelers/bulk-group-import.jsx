@@ -180,7 +180,7 @@ export function BulkGroupImport() {
           Importar desde Texto
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[800px] max-w-[1200px]">
         <DialogHeader>
           <DialogTitle>Importar Viajeros desde Texto</DialogTitle>
         </DialogHeader>
@@ -196,6 +196,7 @@ export function BulkGroupImport() {
                 <ul className="list-disc pl-4 space-y-1">
                   <li>Una persona por línea</li>
                   <li>Línea en blanco para separar grupos</li>
+                  <li>Minimo 2 personas</li>
                 </ul>
               </div>
               <Textarea
@@ -226,9 +227,9 @@ export function BulkGroupImport() {
           </div>
 
           {/* Panel de vista previa */}
-          <div className="border-l pl-4">
+          <div className="border-l pl-4 w-full">
             <h3 className="font-medium mb-4">Vista Previa:</h3>
-            <div className="space-y-5 max-h-[400px] overflow-y-auto">
+            <div className="space-y-5 max-h-[400px] overflow-y-auto ">
               {/* Vista previa de grupos */}
               {groupPreview.length > 0 && (
                 <div className="space-y-3">
@@ -291,6 +292,17 @@ export function BulkGroupImport() {
 
         <div className="flex justify-between items-center gap-2 mt-4">
           <div className="text-sm text-gray-500">
+            <span className="text-black block">
+              Capacidad maxima del grupo {selectedPartner.size} personas
+            </span>
+            {(groupPreview.length !== 0 || individualPreview.length !== 0) && (
+              <span className="text-red-600 block">
+                Personas importadas:{" "}
+                {groupPreview.reduce((acc, group) => acc + group.length, 0) +
+                  individualPreview.length}{" "}
+                / {maxPersons - totalPersons}
+              </span>
+            )}
             {groupPreview.length > 0 && (
               <span>{groupPreview.length} grupos • </span>
             )}
@@ -301,14 +313,18 @@ export function BulkGroupImport() {
               <span>No hay datos para importar</span>
             )}
           </div>
-
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
+            {console.log(groupPreview.some((group) => group.length === 1))}
             <Button
               onClick={processImport}
               disabled={
+                maxPersons - totalPersons <
+                  groupPreview.reduce((acc, group) => acc + group.length, 0) +
+                    individualPreview.length ||
+                groupPreview.some((group) => group.length === 1) ||
                 (groupPreview.length === 0 && individualPreview.length === 0) ||
                 isImporting
               }
