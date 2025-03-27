@@ -71,32 +71,32 @@ export function PartnerSelector() {
       const refreshedPartners = await fetchPartnersByDate(selectedDate, true);
 
       // 3. If we have a selected partner, make sure to select it again with fresh data
-      if (selectedPartner?.id) {
-        // Find the partner in the refreshed data
-        const updatedPartner = refreshedPartners.find(
-          (p) => p.id === selectedPartner.id
-        );
-        if (updatedPartner) {
-          // Re-select the partner with updated data to refresh groups and individuals
-          useTravelerStore.getState().setSelectedPartner(updatedPartner);
+      // if (selectedPartner?.id) {
+      //   // Find the partner in the refreshed data
+      //   const updatedPartner = refreshedPartners.find(
+      //     (p) => p.id === selectedPartner.id
+      //   );
+      //   if (updatedPartner) {
+      //     // Re-select the partner with updated data to refresh groups and individuals
+      //     useTravelerStore.getState().setSelectedPartner(updatedPartner);
 
-          // Explicitly refresh groups and individuals for this partner
-          const filteredIndividuals = useTravelerStore
-            .getState()
-            .individuals.filter(
-              (ind) =>
-                ind.partner_id === updatedPartner.id &&
-                (!ind.group_id || ind.group_id === null)
-            );
+      //     // Explicitly refresh groups and individuals for this partner
+      //     const filteredIndividuals = useTravelerStore
+      //       .getState()
+      //       .individuals.filter(
+      //         (ind) =>
+      //           ind.partner_id === updatedPartner.id &&
+      //           (!ind.group_id || ind.group_id === null)
+      //       );
 
-          const filteredGroups = useTravelerStore
-            .getState()
-            .groups.filter((grp) => grp.partner_id === updatedPartner.id);
+      //     const filteredGroups = useTravelerStore
+      //       .getState()
+      //       .groups.filter((grp) => grp.partner_id === updatedPartner.id);
 
-          useTravelerStore.getState().setGroups(filteredGroups);
-          useTravelerStore.getState().setIndividuals(filteredIndividuals);
-        }
-      }
+      //     useTravelerStore.getState().setGroups(filteredGroups);
+      //     useTravelerStore.getState().setIndividuals(filteredIndividuals);
+      //   }
+      // }
     } catch (error) {
       console.error("Error refreshing data:", error);
       toast.error("Error al actualizar datos: " + error.message);
