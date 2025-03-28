@@ -18,6 +18,7 @@ import { useTravelerStore } from "@/store/travelerStore";
 import { useDateStore } from "@/store/date-store";
 import { useHostelStore } from "@/store/hostelStore";
 import { useHostelAssignmentStore } from "@/store/hostelAssignmentStore";
+import { useAssignmentStore } from "@/store/assignmentStore";
 
 export function HostelAssignment() {
   // Use a ref to track initial load to prevent double fetching
@@ -72,6 +73,11 @@ export function HostelAssignment() {
   );
   const allAssignments = useHostelAssignmentStore(
     (state) => state.allAssignments
+  );
+
+  // Get the deleteAssignmentsByHostelAndDate function from assignmentStore
+  const deleteAssignmentsByHostelAndDate = useAssignmentStore(
+    (state) => state.deleteAssignmentsByHostelAndDate
   );
 
   // Then access the data using proper memoization AFTER the hooks
@@ -178,6 +184,21 @@ export function HostelAssignment() {
     }
   }, [selectedPartner, displayedAssignments, assignmentsByPartner]);
 
+  // Change availableHostels from useMemo to useState
+  const [availableHostels, setAvailableHostels] = useState([]);
+
+  // Update availableHostels when relevant dependencies change
+  useEffect(() => {
+    if (hostels && dateStr) {
+      const availableHostelsList = hostels.filter(
+        (hostel) => !isHostelAssigned(hostel.id, dateStr)
+      );
+      setAvailableHostels(availableHostelsList);
+    } else {
+      setAvailableHostels([]);
+    }
+  }, [hostels, isHostelAssigned, dateStr]);
+
   const handleAddHostel = async () => {
     if (!selectedPartner?.id || !selectedHostel) {
       toast.error("Selecciona un albergue para asignar");
@@ -187,6 +208,11 @@ export function HostelAssignment() {
     try {
       // Use local loading state instead of global state
       setIsAddingAssignment(true);
+
+      // Immediately update the list of available hostels
+      setAvailableHostels((current) =>
+        current.filter((hostel) => hostel.id !== selectedHostel)
+      );
 
       await addHostelAssignment(selectedPartner.id, selectedHostel, dateStr);
 
@@ -201,6 +227,14 @@ export function HostelAssignment() {
     } catch (error) {
       console.error("Error adding hostel:", error);
       toast.error(`Error al asignar albergue: ${error.message}`);
+
+      // In case of error, revert the list of available hostels
+      if (hostels && dateStr) {
+        const availableHostelsList = hostels.filter(
+          (hostel) => !isHostelAssigned(hostel.id, dateStr)
+        );
+        setAvailableHostels(availableHostelsList);
+      }
     } finally {
       setIsAddingAssignment(false);
     }
@@ -212,7 +246,57 @@ export function HostelAssignment() {
       // Use local tracking for specific assignment
       setIsRemovingAssignment((prev) => ({ ...prev, [assignmentId]: true }));
 
+      // Encontrar el hostel_id asociado a esta asignación antes de eliminarla
+      let hostelId = null;
+      let hostelData = null;
+
+      // Buscar en processedAssignments para encontrar el hostel_id de la asignación
+      processedAssignments.forEach((assignment) => {
+        if (assignment.id === assignmentId) {
+          hostelId = assignment.hostel_id;
+          hostelData = assignment.hostel;
+        }
+      });
+
+      // Eliminar la asignación de hostel
       await removeHostelAssignment(assignmentId);
+
+      // Si encontramos el hostel ID, eliminar también todas las asignaciones de habitaciones
+      // relacionadas con este hostel para la fecha seleccionada
+      if (hostelId && dateStr) {
+        try {
+          await deleteAssignmentsByHostelAndDate(hostelId, dateStr);
+        } catch (assignmentError) {
+          console.error("Error removing room assignments:", assignmentError);
+          // No interrumpimos el flujo principal si esta parte falla
+        }
+      }
+
+      // Si encontramos el hostel y tenemos su información, lo agregamos a availableHostels
+      if (hostelId) {
+        // Si tenemos datos completos del hostel desde processedAssignments
+        if (hostelData) {
+          setAvailableHostels((prevAvailable) => {
+            // Verificar si el hostel ya existe en la lista para evitar duplicados
+            if (!prevAvailable.some((h) => h.id === hostelId)) {
+              return [...prevAvailable, hostelData];
+            }
+            return prevAvailable;
+          });
+        } else {
+          // Si solo tenemos el ID, buscamos el hostel completo en la lista de hostels
+          const hostelToAdd = hostels.find((h) => h.id === hostelId);
+          if (hostelToAdd) {
+            setAvailableHostels((prevAvailable) => {
+              // Verificar si el hostel ya existe en la lista para evitar duplicados
+              if (!prevAvailable.some((h) => h.id === hostelId)) {
+                return [...prevAvailable, hostelToAdd];
+              }
+              return prevAvailable;
+            });
+          }
+        }
+      }
 
       // Refresh data to make sure we have the latest - this updates through the store
       await fetchAllAssignments(dateStr);
@@ -230,11 +314,6 @@ export function HostelAssignment() {
       });
     }
   };
-
-  // Filter out already assigned hostels - with memoization
-  const availableHostels = useMemo(() => {
-    return hostels.filter((hostel) => !isHostelAssigned(hostel.id, dateStr));
-  }, [hostels, isHostelAssigned, dateStr]);
 
   // If no partner selected, don't render anything
   if (!selectedPartner) return null;

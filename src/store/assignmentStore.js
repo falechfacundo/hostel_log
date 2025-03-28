@@ -196,6 +196,81 @@ export const useAssignmentStore = create((set, get) => ({
     }
   },
 
+  deleteAssignmentsByHostelAndDate: async (hostelId, dateStr) => {
+    if (!hostelId || !dateStr) {
+      console.error("Missing hostelId or date for deletion");
+      return;
+    }
+
+    try {
+      set({ isLoading: true, error: null });
+
+      // Step 1: Get all rooms associated with this hostel
+      const { data: rooms, error: roomsError } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("hostel_id", hostelId);
+
+      if (roomsError) {
+        throw new Error(
+          `Error fetching rooms for hostel: ${roomsError.message}`
+        );
+      }
+
+      if (!rooms || rooms.length === 0) {
+        // No rooms found for this hostel
+        set({ isLoading: false });
+        return { deleted: 0 };
+      }
+
+      // Extract room IDs
+      const roomIds = rooms.map((room) => room.id);
+
+      // Step 2: Delete all assignments for these rooms on the specified date
+      const { data: deleted, error: deleteError } = await supabase
+        .from("assignments")
+        .delete()
+        .in("room_id", roomIds)
+        .eq("date", dateStr)
+        .select();
+
+      if (deleteError) {
+        throw new Error(
+          `Error deleting room assignments: ${deleteError.message}`
+        );
+      }
+
+      // Step 3: Update local state to reflect deletions
+      set((state) => {
+        const newAssignments = { ...state.assignments };
+
+        // Update all relevant date entries
+        Object.keys(newAssignments).forEach((key) => {
+          if (key.includes(dateStr)) {
+            // Filter out deleted assignments
+            newAssignments[key] = newAssignments[key].filter(
+              (assignment) => !roomIds.includes(assignment.roomId)
+            );
+          }
+        });
+
+        return {
+          assignments: newAssignments,
+          isLoading: false,
+        };
+      });
+
+      return { deleted: deleted?.length || 0 };
+    } catch (error) {
+      console.error("Error in deleteAssignmentsByHostelAndDate:", error);
+      set({ error: error.message, isLoading: false });
+      toast.error(
+        `Error al eliminar asignaciones de habitaciones: ${error.message}`
+      );
+      throw error;
+    }
+  },
+
   // Obtener asignaciones para una fecha y partner específicos
   getAssignmentsByDateAndPartner: (date, partnerId) => {
     if (!date) return [];
