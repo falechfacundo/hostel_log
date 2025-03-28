@@ -53,7 +53,7 @@ export function GroupsPanel({ groups, assignedStatus = {} }) {
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="h-[44vh] overflow-y-scroll space-y-2">
         {availableGroups.length === 0 ? (
           <div className="text-center text-muted-foreground py-4">
             No hay grupos disponibles

@@ -419,9 +419,9 @@ export default function Dashboard() {
             onDragOver={handleDragOver}
             modifiers={[restrictToWindowEdges]}
           >
-            <div className="flex gap-8">
+            <div className="flex items-start gap-8 relative">
               {/* Left panel with groups and individuals */}
-              <div className="w-1/4 space-y-6">
+              <div className="w-1/4 space-y-6 sticky top-8 self-start">
                 <GroupsPanel
                   groups={groups}
                   assignedStatus={checkedEntities.groups}

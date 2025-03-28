@@ -27,7 +27,7 @@ export function IndividualsPanel({ individuals, assignedStatus = {} }) {
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="h-[26vh] overflow-y-scroll space-y-2">
         {availableIndividuals.length === 0 ? (
           <div className="text-center text-gray-500 py-4">
             No hay personas disponibles
