@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Backpack } from "lucide-react";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import { format } from "date-fns";
@@ -15,8 +15,11 @@ export function DownloadAllRoomsButton({
   checkedEntities,
 }) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(false); // Initialize as hidden
   const { groups, individuals } = entities || {};
+
+  // Create a unique ID for this hostel's preview
+  const previewId = `consolidated-hostel-view-${hostel.id}`;
 
   // Generate and download a single consolidated image
   const downloadConsolidatedView = async () => {
@@ -31,30 +34,46 @@ export function DownloadAllRoomsButton({
     }
 
     setIsGenerating(true);
-    setShowPreview(true);
+    setShowPreview(true); // Now show the preview for this specific hostel
 
     try {
-      // Small delay to ensure the preview DOM is rendered
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Longer delay to ensure the preview DOM is fully rendered
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Get the consolidated view element
-      const element = document.getElementById("consolidated-hostel-view");
+      // Get the consolidated view element with the unique ID
+      const element = document.getElementById(previewId);
       if (!element) {
-        throw new Error("No se pudo generar la vista consolidada");
+        throw new Error(
+          `No se pudo generar la vista consolidada para ${hostel.name}`
+        );
       }
 
-      // Generate the image
+      // Get the actual height of the content
+      const actualHeight = element.scrollHeight;
+      console.log(
+        `Generating image for hostel: ${hostel.name}, height: ${actualHeight}px`
+      );
+
+      // Set explicit height on the element to ensure it's captured fully
+      element.style.height = `${actualHeight}px`;
+
+      // Generate the image with height configuration
       const canvas = await html2canvas(element, {
         backgroundColor: "#ffffff",
         scale: 2,
-        logging: false,
+        logging: true, // Enable logging for debugging
         useCORS: true,
+        height: actualHeight + 36,
+        windowHeight: actualHeight,
+        imageTimeout: 0, // No timeout
         onclone: (clonedDoc) => {
           // Make sure the cloned element is visible for rendering
-          const clonedElement = clonedDoc.getElementById(
-            "consolidated-hostel-view"
-          );
+          const clonedElement = clonedDoc.getElementById(previewId);
           if (clonedElement) {
+            // Measure again in the cloned DOM
+            const clonedHeight = clonedElement.scrollHeight;
+            console.log("Cloned element height:", clonedHeight);
+
             clonedElement.style.position = "absolute";
             clonedElement.style.left = "0";
             clonedElement.style.top = "0";
@@ -62,14 +81,33 @@ export function DownloadAllRoomsButton({
             clonedElement.style.pointerEvents = "none";
             clonedElement.style.zIndex = "-1";
             clonedElement.style.width = "850px";
+            clonedElement.style.height = `${clonedHeight}px`;
+
+            // Make sure all parent elements don't clip the content
+            let parent = clonedElement.parentElement;
+            while (parent) {
+              parent.style.height = "auto";
+              parent.style.overflow = "visible";
+              parent = parent.parentElement;
+            }
           }
         },
       });
+
+      // Adjust canvas height if needed
+      if (canvas.height < actualHeight) {
+        console.warn(
+          `Canvas height (${canvas.height}) is less than content height (${actualHeight})`
+        );
+      }
 
       // Create a download link for the image
       const imageDataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = imageDataUrl;
+
+      // Double-check we're using the correct hostel name for the download
+      console.log(`Downloading image for hostel: ${hostel.name}`);
       link.download = `${hostel.name}-Asignaciones-${format(
         date,
         "yyyy-MM-dd"
@@ -88,7 +126,6 @@ export function DownloadAllRoomsButton({
 
   // Process groups
   if (Array.isArray(groups)) {
-    // Remove incorrect console.log
     groups.forEach((group) => {
       // Store the group with its people data
       entitiesMap[group.id] = {
@@ -128,17 +165,26 @@ export function DownloadAllRoomsButton({
         </Button>
       </div>
 
-      {/* Hidden consolidated view for image generation */}
+      {/* Hidden consolidated view for image generation - now with unique ID */}
       {showPreview && (
-        <div style={{ position: "fixed", left: "-9999px", top: 0 }}>
+        // <div
+        //   className="fixed right-20 top-0 bg-red-500 overflow-visible p-2 z-50"
+        //   style={{ maxHeight: "none" }}
+        // >
+        <div
+          className="fixed right-[9999rem] top-0 overflow-visible"
+          style={{ maxHeight: "none" }}
+        >
           <div
-            id="consolidated-hostel-view"
+            id={previewId}
             style={{
               backgroundColor: "white",
               padding: "20px",
               width: "850px",
               fontFamily: "Arial, sans-serif",
+              overflow: "visible",
             }}
+            className="flex flex-col gap-12"
           >
             <h1
               style={{
@@ -154,123 +200,104 @@ export function DownloadAllRoomsButton({
             >
               {hostel.name} - {format(date, "dd/MM/yyyy")}
             </h1>
-
-            {hostel.rooms
-              .filter((room) => assignments.some((a) => a.roomId === room.id))
-              .map((room) => {
-                const roomAssignments = assignments.filter(
-                  (a) => a.roomId === room.id
-                );
-                return (
-                  <div
-                    key={`consolidated-${room.id}`}
-                    style={{
-                      borderRadius: "5px",
-                      padding: "10px",
-                      justifyContent: "center",
-                      display: "inline",
-                    }}
-                  >
-                    <h2
-                      style={{
-                        fontSize: "18px",
-                        marginBottom: "10px",
-                        padding: "5px",
-                        borderRadius: "3px",
-                        textAlign: "center",
-                      }}
-                    >
-                      Habitación de {room.capacity} personas
-                    </h2>
+            <div className="flex flex-col gap-8">
+              {hostel.rooms
+                .filter((room) => assignments.some((a) => a.roomId === room.id))
+                .map((room) => {
+                  const roomAssignments = assignments.filter(
+                    (a) => a.roomId === room.id
+                  );
+                  return (
                     <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        justifyContent: "center",
-                        gap: "12px",
-                      }}
+                      key={`consolidated-${room.id}`}
+                      className="gap-6 flex flex-col items-start"
                     >
-                      {roomAssignments.map((assignment) => {
-                        const entityId =
-                          assignment.entityId ||
-                          assignment.groupId ||
-                          assignment.individualId;
-                        const entity = entitiesMap[entityId];
+                      <h2 className="text-xl">
+                        Habitación de {room.capacity} personas
+                      </h2>
+                      {(() => {
+                        // Separate assignments into individuals and groups
+                        const individualAssignments = [];
+                        const groupAssignments = [];
 
-                        return entity ? (
-                          <div
-                            key={`entity-${assignment.id}`}
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: "12px",
-                            }}
-                          >
-                            {/* <div
-                              style={{
-                                marginBottom: "5px",
-                                fontSize: "14px",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              • {entity.name} {entity.lastName || ""} 
-                               {entity.type === "group" &&
-                                entity.size &&
-                                ` (Grupo de ${entity.size})`}
-                            </div> */}
+                        roomAssignments.forEach((assignment) => {
+                          const entityId =
+                            assignment.entityId ||
+                            assignment.groupId ||
+                            assignment.individualId;
+                          const entity = entitiesMap[entityId];
 
-                            {/* Show all people in the group */}
-                            {entity.type === "group" &&
-                              Array.isArray(entity.people) &&
-                              entity.people.length > 0 && (
-                                <div
-                                  style={{
-                                    borderRadius: "12px",
-                                    padding: "12px",
-                                    display: "inline",
-                                  }}
-                                >
-                                  {entity.people.map((person, idx) => (
+                          if (entity && entity.type === "individual") {
+                            individualAssignments.push({ assignment, entity });
+                          } else if (entity && entity.type === "group") {
+                            groupAssignments.push({ assignment, entity });
+                          }
+                        });
+
+                        // Render individuals first
+                        return (
+                          <div className="flex gap-8">
+                            <div className="flex flex-col gap-4">
+                              {/* Then render groups */}
+                              {groupAssignments.map(
+                                ({ assignment, entity }) => (
+                                  <div key={`entity-${assignment.id}`}>
+                                    {Array.isArray(entity.people) &&
+                                      entity.people.length > 0 && (
+                                        <div>
+                                          {entity.people.map((person, idx) => (
+                                            <div
+                                              key={`person-${entity.id}-${idx}`}
+                                              className="flex gap-4 text-sm"
+                                            >
+                                              {person.backpack ? (
+                                                <Backpack className="text-gray-700 h-5 w-5" />
+                                              ) : (
+                                                <Backpack className="text-transparent h-5 w-5" />
+                                              )}
+                                              {person.name}{" "}
+                                              {person.lastName || ""}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                  </div>
+                                )
+                              )}
+                            </div>
+                            <div>
+                              {individualAssignments.map(
+                                ({ assignment, entity }) => (
+                                  <div key={`entity-${assignment.id}`}>
                                     <div
-                                      key={`person-${entityId}-${idx}`}
-                                      style={{
-                                        marginBottom: "4px",
-                                        color: "#555",
-                                        fontSize: "14px",
-                                        fontStyle: "italic",
-                                        textAlign: "center",
-                                      }}
+                                      key={`individual-${assignment.id}`}
+                                      className="flex gap-4 text-sm"
                                     >
-                                      {person.name} {person.lastName || ""}
-                                      {person.age && ` (${person.age} años)`}
+                                      {entity.backpack ? (
+                                        <Backpack className="text-gray-700 h-5 w-5" />
+                                      ) : (
+                                        <Backpack className="text-transparent h-5 w-5" />
+                                      )}
+                                      {entity.name} {entity.lastName || ""}
                                     </div>
-                                  ))}
+                                  </div>
+                                )
+                              )}
+                            </div>
+
+                            {individualAssignments.length === 0 &&
+                              groupAssignments.length === 0 && (
+                                <div className="italic text-gray-500">
+                                  Sin ocupantes
                                 </div>
                               )}
                           </div>
-                        ) : (
-                          <div
-                            key={`person-${assignment.id}`}
-                            style={{
-                              marginBottom: "4px",
-                              fontSize: "14px",
-                              fontStyle: "italic",
-                              color: "#555",
-                            }}
-                          >
-                            (datos no disponibles)
-                          </div>
                         );
-                      })}
-                      {roomAssignments.length === 0 && (
-                        <div style={{ fontStyle: "italic", color: "#666" }}>
-                          Sin ocupantes
-                        </div>
-                      )}
+                      })()}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+            </div>
           </div>
         </div>
       )}
