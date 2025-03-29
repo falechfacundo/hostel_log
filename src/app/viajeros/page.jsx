@@ -167,7 +167,8 @@ export default function Viajeros() {
                       className="flex items-center gap-2"
                       disabled={
                         totalPersons == maxPersons - 1 ||
-                        totalPersons == maxPersons
+                        totalPersons == maxPersons ||
+                        !selectedPartner
                       }
                     >
                       <Plus className="h-4 w-4" />
@@ -201,7 +202,7 @@ export default function Viajeros() {
                     <Button
                       variant="outline"
                       className="flex items-center gap-2"
-                      disabled={totalPersons == maxPersons}
+                      disabled={totalPersons == maxPersons || !selectedPartner}
                     >
                       <Plus className="h-4 w-4" />
                       <User className="h-4 w-4" />

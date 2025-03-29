@@ -159,7 +159,9 @@ export function BulkGroupImport() {
         <Button
           className="bg-fuchsia-pink-500 hover:bg-fuchsia-pink-600 gap-2"
           disabled={
-            totalPersons == maxPersons - 1 || totalPersons == maxPersons
+            totalPersons == maxPersons - 1 ||
+            totalPersons == maxPersons ||
+            !selectedPartner
           }
         >
           <Upload className="h-4 w-4" />

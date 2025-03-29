@@ -138,6 +138,10 @@ export const useTravelerStore = create(
 
             if (!partners?.length) {
               set({
+                selectedPartner: null,
+                totalPersons: 0,
+                maxPersons: 999,
+                hostelAssignments: [],
                 partners: [],
                 groups: [],
                 individuals: [],
