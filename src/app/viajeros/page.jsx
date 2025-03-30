@@ -21,7 +21,8 @@ import { NewGroupForm } from "@/components/travelers/NewGroupForm";
 import { NewIndividualForm } from "@/components/travelers/NewIndividualForm";
 import { IndividualsList } from "@/components/travelers/IndividualsList";
 import { GroupsList } from "@/components/travelers/GroupsList";
-import { BulkGroupImport } from "@/components/travelers/bulk-group-import";
+
+import Link from "next/link";
 
 export default function Viajeros() {
   // Dialog state
@@ -223,7 +224,12 @@ export default function Viajeros() {
                   </DialogContent>
                 </Dialog>
 
-                <BulkGroupImport />
+                <Button
+                  disabled={totalPersons == maxPersons || !selectedPartner}
+                  asChild
+                >
+                  <Link href="/viajeros/new">Importar Viajeros</Link>
+                </Button>
               </div>
             </div>
           </div>

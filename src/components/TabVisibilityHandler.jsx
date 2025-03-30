@@ -1,19 +1,33 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 
-export function TabVisibilityHandler() {
+export function TabVisibilityHandler({ excludedRoutes = ["/viajeros/new"] }) {
   const { init } = useAuthStore();
+  const pathname = usePathname();
+
+  // Check if current route should be excluded
+  const isExcludedRoute = excludedRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
 
   useEffect(() => {
     // Initialize auth on first render
     const subscription = init();
 
-    // Track tab visibility state
+    // If this is an excluded route, don't add the visibility handler
+    if (isExcludedRoute) {
+      console.log(`Tab visibility reload disabled for route: ${pathname}`);
+      return () => {
+        subscription?.then((sub) => sub?.unsubscribe());
+      };
+    }
+
+    // Regular behavior for non-excluded routes
     let wasHidden = false;
 
-    // Handler that reloads the page when tab becomes visible again
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         wasHidden = true;
@@ -25,16 +39,13 @@ export function TabVisibilityHandler() {
       }
     };
 
-    // Add event listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Cleanup
     return () => {
       subscription?.then((sub) => sub?.unsubscribe());
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [init]);
+  }, [init, isExcludedRoute, pathname]);
 
-  // This component doesn't render anything
   return null;
 }

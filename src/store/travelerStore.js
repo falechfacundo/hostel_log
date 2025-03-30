@@ -78,6 +78,7 @@ export const useTravelerStore = create(
         },
 
         // Direct setters
+        setTotalPersons: (total) => set({ totalPersons: total }),
         setGroups: (groups) => set({ groups }),
         setIndividuals: (individuals) => set({ individuals }),
         setHostelAssignments: (assignments) =>
