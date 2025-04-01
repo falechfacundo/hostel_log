@@ -3,10 +3,10 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Constants for Supabase connection
-const SUPABASE_URL = "https://llwgjoxjuvqmtmlvlqpr.supabase.co";
+const SUPABASE_URL = "https://dscksmpcnanobrauqowj.supabase.co";
 
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxsd2dqb3hqdXZxbXRtbHZscXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2NzYyOTEsImV4cCI6MjA1NjI1MjI5MX0.0bl222cpSXfbN6v_08NyKQohDta19N4xwdY2s_l628A";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzY2tzbXBjbmFub2JyYXVxb3dqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MDE4MDIsImV4cCI6MjA1ODk3NzgwMn0.zrHCAKik-zodrL9ncFRMPiQL0SX9sarQQhVatIe27EE";
 
 // Create a browser client with proper storage settings
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
